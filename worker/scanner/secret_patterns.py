@@ -143,7 +143,7 @@ def detect(text: str, include_loose: bool = False, allow_unquoted: bool = False)
         if not m.group("q") and not allow_unquoted:
             continue
         if _looks_secret(val):
-            add(Secret(m.start("val"), m.end("val"), val, f"寫死的 {m.group('name')}",
+            add(Secret(m.start("val"), m.end("val"), val, m.group("name"),
                        "發這把金鑰的服務後台", _env_name_from(m.group("name")), True))
 
     if include_loose:

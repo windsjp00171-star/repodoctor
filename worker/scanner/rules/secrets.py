@@ -11,7 +11,7 @@ def _fix_prompt(file: str, line: int, kind: str, p4: str, env: str, provider: st
     rotate = (f"\n\n另外：這把金鑰已經在 git 紀錄裡，就算刪掉，舊的 commit 裡還看得到。"
               f"修好程式後請到「{provider}」把它作廢、換一把新的——這一步只有你能做，AI 做不到。") if committed else ""
     return (
-        f"請幫我處理 `{file}` 第 {line} 行寫死的 {kind}（開頭是 `{p4}`）。\n"
+        f"請幫我處理 `{file}` 第 {line} 行寫死的 `{kind}`（開頭是 `{p4}`）。\n"
         f"1. 要改的地方：把這個值從 `{file}` 拿掉，改成從環境變數 `{env}` 讀取；"
         f"在 `.env.example` 加一行 `{env}=`（值留空）當範例。\n"
         f"2. 確認 `.gitignore` 有擋 `.env`，沒有就加上。\n"
@@ -39,8 +39,8 @@ def scan(proj: Project) -> list[Finding]:
             where = "已經 commit 進 git" if f.tracked else ("還沒 commit，但下一次 `git add` 就會進去" if f.tracked is False else "（沒有 git，無法判斷有沒有 commit）")
             out.append(Finding(
                 category="secrets", severity=severity,
-                title=f"{s.kind}寫在 {f.name}",
-                plain_explanation=(f"你的 {s.kind} 直接寫在 `{f.path}` 裡，{where}。"
+                title=f"{s.kind} 寫死在 {f.name}",
+                plain_explanation=(f"{s.kind} 直接寫在 `{f.path}` 裡，{where}。"
                                    f"任何看得到這個專案的人，都能拿去用你的帳號、花你的錢。"),
                 advanced_explanation=(f"`{f.path}:{line_no}` 偵測到 {s.kind}（開頭 `{preview(s.value)}`）。"
                                       f"金鑰應該放在環境變數，由部署平台注入，不進版本控制。"),

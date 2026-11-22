@@ -8,7 +8,8 @@ import config
 from scanner.files import Project
 from scanner.findings import Finding
 
-_DEAD_NAME_RE = re.compile(r"(?i)(\.bak|\.orig|\.old|~)$|[ _\-.](copy|old|backup|bak)\.\w+$| \(\d\)\.\w+$")
+# 只認明確的備份樣式；`drive_backup.py` 這種「功能叫 backup」的模組不算
+_DEAD_NAME_RE = re.compile(r"(?i)(\.bak|\.orig|\.old|\.backup|~)$|[ _\-](copy|old)\.\w+$| copy( \d+)?\.\w+$| \(\d\)\.\w+$")
 
 
 def _env_ignored(proj: Project) -> bool:

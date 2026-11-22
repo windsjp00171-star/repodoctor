@@ -125,6 +125,11 @@ def test_create_client_in_strings_is_not_a_call(tmp_path):
 
 # ── 專案衛生 ──
 
+def test_backup_feature_modules_are_not_dead_files(tmp_path):
+    write(tmp_path, {"drive_backup.py": "x=1\n", "dropbox_backup.py": "x=1\n", "README.md": "r\n", ".gitignore": "\n"})
+    assert not [f for f in hygiene.scan(load_project(tmp_path)) if f.rule_id == "hygiene.dead_file"]
+
+
 def test_hygiene(tmp_path):
     write(tmp_path, {"app.py": "import os\nos.environ.get('X')\n" + "x = 1\n" * 1200, "app_copy.py": "x=1\n"})
     ids = {f.rule_id for f in hygiene.scan(load_project(tmp_path))}
