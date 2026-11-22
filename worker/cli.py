@@ -24,20 +24,50 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def scan(path: str, use_ai: bool = True, dry_run: bool = False) -> dict:
+class Progress:
+    """把進度寫成 JSON Lines（對應 SPEC scans 表的 progress、current_file）。網站讀最後一行。"""
+
+    def __init__(self, path: str | None):
+        self.fp = open(path, "a", encoding="utf-8") if path else None
+        self.found = 0
+
+    def emit(self, progress: int, stage: str, current_file: str | None = None, found: int | None = None):
+        if found is not None:
+            self.found = found
+        if self.fp:
+            self.fp.write(json.dumps({"progress": progress, "stage": stage, "current_file": current_file,
+                                      "found": self.found}, ensure_ascii=False) + "\n")
+            self.fp.flush()
+
+
+def scan(path: str, use_ai: bool = True, dry_run: bool = False, progress_file: str | None = None) -> dict:
     started = _now()
+    prog = Progress(progress_file)
+    prog.emit(1, "讀取專案")
     proj = load_project(path)
     coverage: dict[str, dict] = {}
 
-    findings = secrets.scan(proj)
+    n = max(1, len(proj.files))
+    step = max(1, n // 200)
+    done = [0]
+
+    def on_file(p, found):
+        done[0] += 1
+        if done[0] % step == 0:
+            prog.emit(5 + 35 * done[0] // n, "檢查金鑰外洩", p, found)
+
+    findings = secrets.scan(proj, on_file=on_file)
+    prog.emit(40, "檢查資料庫權限", found=len(findings))
     coverage["secrets"] = {"status": "done", "note": f"掃描 {len(proj.files)} 個檔案"
                            + ("；有 git：只看會被 commit 的檔案，並檢查歷史裡的 .env 類檔名" if proj.has_git else "；沒有 git，無法判斷檔案有沒有 commit")}
     db = supabase_rls.scan(proj)
     findings += db
     coverage["database"] = ({"status": "done", "note": "只看 SQL migration 檔，看不到線上資料庫"} if proj.uses_supabase()
                             else {"status": "not_applicable", "note": "沒有用 Supabase"})
+    prog.emit(48, "檢查專案衛生", found=len(findings))
     findings += hygiene.scan(proj)
     coverage["hygiene"] = {"status": "done", "note": ""}
+    prog.emit(55, "找重複與散落", found=len(findings))
     dup_rule, dup_groups = candidates.scan(proj)
     findings += dup_rule
 
@@ -47,12 +77,15 @@ def scan(path: str, use_ai: bool = True, dry_run: bool = False) -> dict:
     ai = AIClient(masker, dry_run=dry_run)
 
     if use_ai or dry_run:
+        prog.emit(60, "AI 檢查登入與權限", found=len(findings))
         fs, coverage["auth"] = ai_auth.run(proj, ai, masker)
         findings += fs
+        prog.emit(80, "AI 判斷重複", found=len(findings))
         fs, cov = ai_dup.run(dup_groups, ai, masker)
         findings += fs
         coverage["duplication"] = {"status": "done" if cov["status"] == "not_applicable" else cov["status"],
                                    "note": f"規則找到 {len(dup_rule)} 個確定的重複；AI：{cov['note']}"}
+        prog.emit(90, "AI 比對規範", found=len(findings))
         fs, coverage["drift"] = ai_drift.run(proj, ai, masker)
         findings += fs
     else:
@@ -60,8 +93,10 @@ def scan(path: str, use_ai: bool = True, dry_run: bool = False) -> dict:
         coverage["duplication"] = {"status": "partial", "note": f"只跑了規則（找到 {len(dup_rule)} 個）；同名函式的 AI 判斷因 --no-ai 略過"}
         coverage["drift"] = {"status": "skipped", "note": "--no-ai"}
 
-    return build(proj, findings, coverage, ai.usage.to_dict(), started, _now(),
-                 payloads=ai.payloads if dry_run else None)
+    report = build(proj, findings, coverage, ai.usage.to_dict(), started, _now(),
+                   payloads=ai.payloads if dry_run else None)
+    prog.emit(100, "完成", found=len(findings))
+    return report
 
 
 def _summary(r: dict) -> str:
@@ -87,10 +122,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-o", "--output", help="報告寫到這個檔案（預設印到標準輸出）")
     ap.add_argument("--no-ai", action="store_true", help="只跑規則掃描，不呼叫 Claude API")
     ap.add_argument("--dry-run", action="store_true", help="列出會送給 AI 的內容（已遮罩）與預估 token，不呼叫 API")
+    ap.add_argument("--progress-file", help="把進度一行一筆寫到這個檔案（給網站用）")
     ap.add_argument("-q", "--quiet", action="store_true", help="不印摘要")
     args = ap.parse_args(argv)
 
-    report = scan(args.path, use_ai=not args.no_ai, dry_run=args.dry_run)
+    report = scan(args.path, use_ai=not args.no_ai, dry_run=args.dry_run, progress_file=args.progress_file)
     text = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fp:

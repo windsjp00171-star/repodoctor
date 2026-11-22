@@ -8,8 +8,19 @@
 Vibe coder 的程式健檢醫生：讀一個專案，用中文白話說出哪裡有問題，並產生可以直接貼給
 Claude Code 的修復指令。**只讀不寫**——不改使用者的程式、不開 PR。
 
-目前階段：**Phase 0（驗證健檢引擎）**。只有 `worker/` 的命令列工具，沒有前端、
-沒有 GitHub App、沒有金流、不寫資料庫。
+目前階段：**Phase 0（驗證健檢引擎）＋本機版健檢網站**。
+- `worker/`：Python 健檢引擎（命令列）
+- `web/`：Next.js 網站，在本機跑：選專案 → 開始健檢 → 看掃描進度 → 看報告、複製修復指令。
+  還沒有 GitHub 登入、Supabase、金流；健檢結果存在 `web/data/scans/`（不進 git）。
+  `web/lib/scans.ts` 是唯一碰儲存與 worker 的地方，之後換成 Supabase 只換這一個檔案。
+
+```bash
+cd web
+npm install
+npm run build && npm start        # http://localhost:3000
+# 可選環境變數：PROJECTS_ROOT（列出哪個資料夾底下的專案，預設 repodoctor 的上一層）、
+#               ANTHROPIC_API_KEY（有設才會出現 AI 分析）、PYTHON、WORKER_DIR
+```
 
 ```bash
 cd worker

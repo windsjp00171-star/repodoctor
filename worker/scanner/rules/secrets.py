@@ -22,10 +22,13 @@ def _fix_prompt(file: str, line: int, kind: str, p4: str, env: str, provider: st
     )
 
 
-def scan(proj: Project) -> list[Finding]:
+def scan(proj: Project, on_file=None) -> list[Finding]:
+    """on_file(檔案路徑, 目前找到幾個)：每掃一個檔案叫一次，給網站顯示掃描進度。"""
     out: list[Finding] = []
 
     for f in proj.files:
+        if on_file:
+            on_file(f.path, len(out))
         if not f.text:
             continue
         unq = allow_unquoted(f)

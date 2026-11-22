@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 設計 token（SPEC「設計 token（初稿）」）。深色是預設，淺色模式第二階段再做。 */
+:root {
+  --bg: 10 14 20;          /* #0A0E14 */
+  --surface: 17 24 33;     /* #111821 */
+  --border: 31 42 55;      /* #1F2A37 */
+  --text: 230 237 243;     /* #E6EDF3 */
+  --text-muted: 139 152 169; /* #8B98A9 */
+  --primary: 34 211 238;   /* #22D3EE 電光青 */
+  --critical: 244 63 94;   /* #F43F5E */
+  --high: 245 158 11;      /* #F59E0B */
+  --medium: 234 179 8;     /* #EAB308 */
+  --healthy: 52 211 153;   /* #34D399 */
+  color-scheme: dark;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text));
+  background-image:
+    linear-gradient(rgb(var(--border) / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--border) / 0.35) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+:focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 2px; }
+
+@keyframes scanline { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+@keyframes pulse-border { 0%, 100% { box-shadow: 0 0 0 0 rgb(var(--critical) / 0.0); } 50% { box-shadow: 0 0 0 3px rgb(var(--critical) / 0.25); } }
+.animate-scanline { animation: scanline var(--motion-scan) linear infinite; }
+.animate-critical { animation: pulse-border var(--motion-pulse) ease-in-out infinite; }
+
+/* 尊重「減少動態效果」：動畫全部改成淡入（SPEC 底線規則） */
+@media (prefers-reduced-motion: reduce) {
+  .animate-scanline, .animate-critical { animation: none; }
+  * { transition-duration: 0.01ms !important; }
+}
