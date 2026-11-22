@@ -1,0 +1,20 @@
+[project]
+name = "repodoctor-worker"
+version = "0.1.0"
+description = "RepoDoctor 健檢引擎（Phase 0）"
+requires-python = ">=3.12"
+dependencies = ["anthropic>=2.0"]
+
+[project.optional-dependencies]
+db = ["supabase>=2.0"]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+py-modules = ["cli", "config", "db"]
+
+[tool.setuptools.packages.find]
+include = ["scanner*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
