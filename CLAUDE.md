@@ -8,18 +8,27 @@
 Vibe coder 的程式健檢醫生：讀一個專案，用中文白話說出哪裡有問題，並產生可以直接貼給
 Claude Code 的修復指令。**只讀不寫**——不改使用者的程式、不開 PR。
 
-目前階段：**Phase 0（驗證健檢引擎）＋本機版健檢網站**。
-- `worker/`：Python 健檢引擎（命令列）
-- `web/`：Next.js 網站，在本機跑：選專案 → 開始健檢 → 看掃描進度 → 看報告、複製修復指令。
-  還沒有 GitHub 登入、Supabase、金流；健檢結果存在 `web/data/scans/`（不進 git）。
-  `web/lib/scans.ts` 是唯一碰儲存與 worker 的地方，之後換成 Supabase 只換這一個檔案。
+目前階段：**Phase 1（讓別人也能用）**，程式寫好、還沒部署。上線步驟見 [`docs/SETUP.md`](docs/SETUP.md)。
+
+| 部分 | 在哪裡 | 做什麼 |
+|---|---|---|
+| 健檢引擎 | `worker/scanner/`、`worker/cli.py` | 給一個資料夾，吐一份報告 |
+| 雲端 worker | `worker/runner.py`、`worker/github_app.py` | 從 Supabase 拿待辦 → 驗證 GitHub 安裝 → 唯讀淺層 clone → 健檢 → 寫回 → 刪掉程式碼 |
+| 網站 | `web/`（Next.js） | GitHub 登入、安裝 App、選 repo、Realtime 看進度、報告 |
+| 資料庫 | `supabase/migrations/` | SPEC 五張表，全部開 RLS |
+
+### 信任邊界（改這幾個地方要特別小心）
+- **授權判斷在 worker，不在網站。** 網站只能寫 `installations.github_installation_id`（一律 pending）與
+  `scans.repo_id / use_ai`；「這個 GitHub 安裝是不是這個人的」由 worker 向 GitHub 確認後才標 active。
+  網址參數和前端都可以被偽造，worker 是唯一可信的一方。
+- 使用者的 GitHub 帳號一律從 `auth.identities` 讀，不讀 `user_metadata`（使用者自己改得到）。
+- GitHub token 只放在 git 的 http header，不放進 clone 網址（不會寫進 `.git/config` 或錯誤訊息）。
+- 欄位層級權限寫在 migration 裡；`supabase/tests/run.sh` 用一般 Postgres 驗 RLS，改 migration 要跑。
 
 ```bash
-cd web
-npm install
-npm run build && npm start        # http://localhost:3000
-# 可選環境變數：PROJECTS_ROOT（列出哪個資料夾底下的專案，預設 repodoctor 的上一層）、
-#               ANTHROPIC_API_KEY（有設才會出現 AI 分析）、PYTHON、WORKER_DIR
+cd web && npm install && npm run build     # 環境變數見 web/.env.example
+cd supabase && PGHOST=/tmp PGPORT=55432 PGUSER=postgres bash tests/run.sh   # RLS 測試（要一個本機 Postgres）
+cd worker && python runner.py --once        # 處理完目前的待辦就結束；環境變數見 worker/.env.example
 ```
 
 ```bash

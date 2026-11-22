@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import shutil
 import tempfile
 import time
@@ -106,7 +107,9 @@ def process_scan(scan: dict):
     try:
         on_progress({"progress": 2, "stage": "從 GitHub 下載程式（唯讀）", "current_file": None, "found": 0})
         github_app.shallow_clone(inst["github_installation_id"], repo["full_name"], workdir + "/repo")
-        report = run_scan(workdir + "/repo", use_ai=scan["use_ai"], on_progress=on_progress,
+        # use_ai 是使用者勾的；伺服器沒開 AI（沒設金鑰）時一律不跑，避免有人直接打 API 硬開
+        use_ai = bool(scan["use_ai"] and os.environ.get("ANTHROPIC_API_KEY"))
+        report = run_scan(workdir + "/repo", use_ai=use_ai, on_progress=on_progress,
                           project_name=repo["full_name"])
     except github_app.GitHubError as e:
         return _fail(scan_id, str(e))

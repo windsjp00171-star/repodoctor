@@ -1,16 +1,16 @@
 "use client";
 import { copy } from "@/lib/copy";
-import type { ScanStatus } from "@/lib/types";
+import type { ScanRow } from "@/lib/types";
 
 /** 掃描中（SPEC 標誌時刻 1）：一道掃描光、真的進度、真的檔名、即時的問題數。 */
-export function ScanLive({ scan }: { scan: ScanStatus }) {
-  const { progress, recentFiles } = scan;
+export function ScanLive({ project, scan, recentFiles }: { project: string; scan: ScanRow; recentFiles: string[] }) {
+  const progress = { progress: scan.progress, stage: scan.status === "queued" ? "排隊中，馬上輪到你" : scan.stage ?? "", found: scan.found };
   return (
     <section className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="font-mono text-xs uppercase tracking-[0.14em] text-primary">{copy.scanning.title}</div>
-          <h1 className="text-2xl font-bold">{scan.meta.project}</h1>
+          <h1 className="text-2xl font-bold">{project}</h1>
           <p className="mt-1 text-sm text-muted">{progress.stage}</p>
         </div>
         <div className="text-right">

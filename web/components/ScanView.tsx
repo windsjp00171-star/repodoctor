@@ -1,37 +1,59 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { copy } from "@/lib/copy";
 import { motion } from "@/lib/motion";
-import type { ScanStatus } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import { type Finding, type ScanRow, toReport } from "@/lib/types";
 import { ReportView } from "./ReportView";
 import { ScanLive } from "./ScanLive";
 
-export function ScanView({ initial }: { initial: ScanStatus }) {
+export function ScanView({ initial, repoName, initialFindings }: { initial: ScanRow; repoName: string; initialFindings: Finding[] }) {
+  const router = useRouter();
   const [scan, setScan] = useState(initial);
-  useEffect(() => {
-    if (scan.status !== "running") return;
-    const t = setTimeout(async () => {
-      const res = await fetch(`/api/scans/${scan.meta.id}`, { cache: "no-store" }).catch(() => null);
-      const data = await res?.json().catch(() => null);
-      setScan(data?.success ? data.scan : { ...scan }); // 網路抖一下就再問一次
-    }, motion.pollMs);
-    return () => clearTimeout(t);
-  }, [scan]);
+  const [findings, setFindings] = useState(initialFindings);
+  const [recentFiles, setRecentFiles] = useState<string[]>([]);
+  const supabase = useRef(createClient()).current;
 
-  if (scan.status === "done" && scan.report) return <ReportView scan={scan} report={scan.report} />;
+  // 掃描進度：Supabase Realtime 推過來（SPEC：真的進度，不是假動畫）。
+  // 另外每幾秒補問一次，萬一 Realtime 斷線也不會卡在「掃描中」。
+  useEffect(() => {
+    if (initial.status === "done" || initial.status === "failed") return;
+    const apply = (row: ScanRow) => {
+      setScan(row);
+      if (row.current_file) setRecentFiles((prev) => [row.current_file!, ...prev.filter((f) => f !== row.current_file)].slice(0, 12));
+    };
+    const channel = supabase.channel(`scan-${initial.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "scans", filter: `id=eq.${initial.id}` },
+        (p) => apply(p.new as ScanRow))
+      .subscribe();
+    const timer = setInterval(async () => {
+      const { data } = await supabase.from("scans").select("*").eq("id", initial.id).single();  // 補問：Realtime 斷線時的保險
+      if (data) apply(data as ScanRow);
+    }, motion.pollMs * 5);
+    return () => { clearInterval(timer); supabase.removeChannel(channel); };
+  }, [initial.id, initial.status, supabase]);
+
+  // 完成時抓 findings
+  useEffect(() => {
+    if (scan.status !== "done" || findings.length || !scan.found) return;
+    supabase.from("findings").select("*").eq("scan_id", scan.id).then(({ data }) => data && setFindings(data as Finding[]));
+  }, [scan.status, scan.found, scan.id, findings.length, supabase]);
+
+  async function rescan() {
+    const { data } = await supabase.from("scans").insert({ repo_id: scan.repo_id, use_ai: scan.use_ai }).select("id").single();
+    if (data) router.push(`/scans/${data.id}`);
+  }
+
+  if (scan.status === "done" && (findings.length || !scan.found)) return <ReportView report={toReport(scan, findings)} onRescan={rescan} />;
   if (scan.status === "failed")
     return (
       <section className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold text-critical">
-          {copy.scanning.failed}：{scan.meta.project}
-        </h1>
-        <p className="text-muted">{copy.errors.workerFailed}</p>
-        {scan.error && (
-          <pre className="overflow-x-auto rounded-card border border-border bg-surface p-3 font-mono text-xs">{scan.error}</pre>
-        )}
-        <Link href="/" className="text-primary">← {copy.report.back}</Link>
+        <h1 className="text-2xl font-bold text-critical">{copy.scanning.failed}</h1>
+        <p>{scan.error ?? copy.errors.workerFailed}</p>
+        <Link href="/dashboard" className="text-primary">← {copy.report.back}</Link>
       </section>
     );
-  return <ScanLive scan={scan} />;
+  return <ScanLive project={repoName} scan={scan} recentFiles={recentFiles} />;
 }

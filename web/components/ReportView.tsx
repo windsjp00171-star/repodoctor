@@ -1,17 +1,15 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { allCriticalPrompt, copy } from "@/lib/copy";
-import type { Report, ScanStatus } from "@/lib/types";
+import type { Report } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
 import { FindingCard } from "./FindingCard";
 import { ScoreRing } from "./ScoreRing";
 
 const AI_CATS = new Set(["auth", "drift"]);
 
-export function ReportView({ scan, report }: { scan: ScanStatus; report: Report }) {
-  const router = useRouter();
+export function ReportView({ report, onRescan }: { report: Report; onRescan: () => Promise<void> }) {
   const [advanced, setAdvanced] = useState(false);
   const [rescanning, setRescanning] = useState(false);
   useEffect(() => {
@@ -31,24 +29,18 @@ export function ReportView({ scan, report }: { scan: ScanStatus; report: Report 
   };
   async function rescan() {
     setRescanning(true);
-    const res = await fetch("/api/scans", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: scan.meta.path, ai: scan.meta.ai }),
-    });
-    const data = await res.json().catch(() => null);
-    if (data?.success) router.push(`/scans/${data.id}`);
-    else setRescanning(false);
+    await onRescan();
+    setRescanning(false);
   }
 
   const critical = report.findings.filter((f) => f.severity === "critical");
-  const cost = report.token_usage.total;
+  const cost = report.cost;
   const covStatus = (k: string) => report.coverage[k]?.status;
 
   return (
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <Link href="/" className="text-muted hover:text-text">← {copy.report.back}</Link>
+        <Link href="/dashboard" className="text-muted hover:text-text">← {copy.report.back}</Link>
         <div className="flex items-center gap-2">
           <div role="group" aria-label="報告模式" className="inline-flex rounded-full border border-border p-1">
             {[false, true].map((adv) => (
