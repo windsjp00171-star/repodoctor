@@ -44,3 +44,7 @@ MAX_READ_BYTES = 2_000_000          # 超過就不讀內容（仍會列入「巨
 LONG_FILE_LINES = 1000              # 程式檔超過這個行數：AI 之後會很難改
 HUGE_FILE_BYTES = 5_000_000         # 被 commit 的單一檔案超過這個大小
 CODE_EXTS = {".py", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".mjs", ".cjs"}
+
+# ── 雲端 worker（runner.py）──
+POLL_SECONDS = 3                    # 沒事做時多久問一次資料庫
+DAILY_SCANS_PER_USER = 10           # 測試期每人每天的健檢次數上限（擋濫用與 AI 成本）

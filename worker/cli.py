@@ -25,24 +25,37 @@ def _now() -> str:
 
 
 class Progress:
-    """把進度寫成 JSON Lines（對應 SPEC scans 表的 progress、current_file）。網站讀最後一行。"""
+    """掃描進度（對應 SPEC scans 表的 progress、stage、current_file）。
 
-    def __init__(self, path: str | None):
-        self.fp = open(path, "a", encoding="utf-8") if path else None
+    sink 收到 {"progress", "stage", "current_file", "found"}：命令列寫成 JSON Lines，
+    雲端 worker（runner.py）寫進 Supabase 給網站的 Realtime 訂閱。
+    """
+
+    def __init__(self, sink=None):
+        self.sink = sink
         self.found = 0
 
     def emit(self, progress: int, stage: str, current_file: str | None = None, found: int | None = None):
         if found is not None:
             self.found = found
-        if self.fp:
-            self.fp.write(json.dumps({"progress": progress, "stage": stage, "current_file": current_file,
-                                      "found": self.found}, ensure_ascii=False) + "\n")
-            self.fp.flush()
+        if self.sink:
+            self.sink({"progress": progress, "stage": stage, "current_file": current_file, "found": self.found})
 
 
-def scan(path: str, use_ai: bool = True, dry_run: bool = False, progress_file: str | None = None) -> dict:
+def _file_sink(path: str):
+    fp = open(path, "a", encoding="utf-8")
+
+    def write(ev: dict):
+        fp.write(json.dumps(ev, ensure_ascii=False) + "\n")
+        fp.flush()
+    return write
+
+
+def scan(path: str, use_ai: bool = True, dry_run: bool = False, progress_file: str | None = None,
+         on_progress=None, project_name: str | None = None) -> dict:
+    """project_name：報告上顯示的名字。雲端 worker clone 到暫存資料夾，資料夾名不是 repo 名。"""
     started = _now()
-    prog = Progress(progress_file)
+    prog = Progress(on_progress or (_file_sink(progress_file) if progress_file else None))
     prog.emit(1, "讀取專案")
     proj = load_project(path)
     coverage: dict[str, dict] = {}
@@ -95,6 +108,8 @@ def scan(path: str, use_ai: bool = True, dry_run: bool = False, progress_file: s
 
     report = build(proj, findings, coverage, ai.usage.to_dict(), started, _now(),
                    payloads=ai.payloads if dry_run else None)
+    if project_name:
+        report["project"] = project_name
     prog.emit(100, "完成", found=len(findings))
     return report
 
