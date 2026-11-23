@@ -87,3 +87,82 @@ def test_clone_keeps_token_out_of_url_and_disk(monkeypatch, tmp_path):
     assert token not in url and "@" not in url        # 不進網址 → 不會寫進 .git/config
     assert "--depth" in seen["cmd"]
     assert not any(token in a for a in seen["cmd"])   # header 裡是 base64，原值也不出現在指令列
+
+
+class FakeQuery:
+    def __init__(self, data):
+        self.data = data
+
+    def select(self, *a, **k):
+        return self
+
+    @property
+    def not_(self):  # 真的 postgrest client 上 not_ 是 property，不是方法
+        return self
+
+    def __getattr__(self, name):
+        return lambda *a, **k: self
+
+    def execute(self):
+        return type("R", (), {"data": self.data})()
+
+
+def test_deletion_requests_delete_auth_users(monkeypatch):
+    deleted = []
+
+    class DB:
+        auth = type("A", (), {"admin": type("Adm", (), {"delete_user": staticmethod(lambda uid: deleted.append(uid))})()})()
+
+        def table(self, name):
+            assert name == "profiles"
+            return FakeQuery([{"id": "u1"}, {"id": "u2"}])
+    monkeypatch.setattr(runner, "supabase", DB())
+    runner.process_deletion_requests()
+    assert deleted == ["u1", "u2"]
+
+
+def test_one_failed_deletion_does_not_stop_the_others(monkeypatch):
+    deleted = []
+
+    def delete_user(uid):
+        if uid == "u1":
+            raise RuntimeError("boom")
+        deleted.append(uid)
+
+    class DB:
+        auth = type("A", (), {"admin": type("Adm", (), {"delete_user": staticmethod(delete_user)})()})()
+
+        def table(self, name):
+            return FakeQuery([{"id": "u1"}, {"id": "u2"}])
+    monkeypatch.setattr(runner, "supabase", DB())
+    runner.process_deletion_requests()
+    assert deleted == ["u2"]
+
+
+def test_purge_uses_configured_retention(monkeypatch):
+    import config
+    calls = []
+
+    class DB:
+        def rpc(self, fn, params):
+            calls.append((fn, params))
+            return FakeQuery(0)
+    monkeypatch.setattr(runner, "supabase", DB())
+    runner.purge_expired()
+    assert calls == [("purge_expired_findings", {"retention_days": config.RETENTION_DAYS})]
+
+
+def test_privacy_jobs_failing_does_not_stop_scans(monkeypatch):
+    def boom():
+        raise RuntimeError("column delete_requested_at does not exist")
+    monkeypatch.setattr(runner, "process_deletion_requests", boom)
+    monkeypatch.setattr(runner, "purge_expired", boom)
+    monkeypatch.setattr(runner, "process_installations", lambda: None)
+    scanned = []
+    monkeypatch.setattr(runner, "process_scan", scanned.append)
+
+    class DB:
+        def rpc(self, fn, *a):
+            return FakeQuery([{"id": "s1"}])
+    monkeypatch.setattr(runner, "supabase", DB())
+    assert runner.tick() is True and scanned == [{"id": "s1"}]

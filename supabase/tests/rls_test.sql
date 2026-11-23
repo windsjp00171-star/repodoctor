@@ -131,4 +131,38 @@ do $$ begin
   if not exists (select 1 from public.installations where user_id = '00000000-0000-0000-0000-00000000000b') then raise exception 'A deleted B''s data'; end if;
 end $$;
 
+-- ── 003：保存期限 ──
+-- B 目前有一筆健檢；補兩筆 findings：一筆 100 天前、一筆今天
+set role service_role;
+insert into public.findings (scan_id, user_id, category, severity, title, plain_explanation, advanced_explanation, fix_prompt, fingerprint, created_at)
+  select id, user_id, 'hygiene', 'low', 'old', 'p', 'a', 'f', 'fp-old', now() - interval '100 days' from public.scans where user_id = '00000000-0000-0000-0000-00000000000b' limit 1;
+insert into public.findings (scan_id, user_id, category, severity, title, plain_explanation, advanced_explanation, fix_prompt, fingerprint)
+  select id, user_id, 'hygiene', 'low', 'new', 'p', 'a', 'f', 'fp-new' from public.scans where user_id = '00000000-0000-0000-0000-00000000000b' limit 1;
+do $$ begin
+  if public.purge_expired_findings(90) <> 1 then raise exception 'should purge exactly the 100-day-old finding'; end if;
+  if exists (select 1 from public.findings where title = 'old') then raise exception 'old finding still there'; end if;
+  if not exists (select 1 from public.findings where title = 'new') then raise exception 'new finding must stay'; end if;
+  if not exists (select 1 from public.scans where user_id = '00000000-0000-0000-0000-00000000000b') then raise exception 'scan (score) must stay'; end if;
+end $$;
+reset role;
+-- 使用者不能自己清別人的、也不能呼叫清除函式
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+select pg_temp.expect_fail($$select public.purge_expired_findings(0)$$, 'user calls purge');
+-- ── 003：申請刪除帳號 ──
+-- 只能申請自己的；申請時會叫醒 worker
+reset role;
+truncate net.calls;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+update public.profiles set delete_requested_at = now() where id = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.expect_fail($$update public.profiles set plan = 'pro'$$, 'still cannot change plan');
+update public.profiles set delete_requested_at = now();
+reset role;
+do $$ begin
+  if (select delete_requested_at from public.profiles where id = '00000000-0000-0000-0000-00000000000a') is not null then raise exception 'B requested deletion for A'; end if;
+  if (select delete_requested_at from public.profiles where id = '00000000-0000-0000-0000-00000000000b') is null then raise exception 'B own request not saved'; end if;
+  if (select count(*) from net.calls) <> 1 then raise exception 'delete request should kick worker once, got %', (select count(*) from net.calls); end if;
+end $$;
+
 select 'ALL RLS TESTS PASSED';

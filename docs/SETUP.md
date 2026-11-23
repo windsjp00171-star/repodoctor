@@ -107,6 +107,7 @@
    ```
    （存在 Supabase 的保險箱 Vault 裡，不會出現在程式碼或網站上）
 4. **加叫醒鈴**：Supabase → SQL Editor，貼上 `supabase/migrations/002_kick_worker.sql` 全部內容，Run。
+   接著再貼 `supabase/migrations/003_retention_and_account_deletion.sql`，Run（報告 90 天到期刪細節、「刪除我的所有資料」連帳號一起刪，都靠這一份）。
 5. **試跑一次**：GitHub → `repodoctor` → **Actions** → 左邊 `worker` → **Run workflow**。
    跑完是綠勾就代表連得上 Supabase 和 GitHub App。
 
@@ -181,4 +182,7 @@
 - 只支援安裝在**個人帳號**上的 GitHub App；裝在組織上的會被拒絕（要另外確認你是那個組織的成員）
 - 歷史 commit 只抓最新一個（淺層 clone），所以「.env 曾經被 commit 過」這項在線上版抓不到，只有本機版抓得到
 - 每人每天最多 10 次健檢（`worker/config.py` 的 `DAILY_SCANS_PER_USER`）
+- 健檢細節保存 90 天（`worker/config.py` 的 `RETENTION_DAYS`，要改的話 `web/lib/legal.ts` 和隱私權政策也要一起改）
+- 隱私權政策與使用條款是草稿，不是法律意見；正式收費或擴大使用前建議請律師看過。聯絡方式用 Vercel 環境變數 `NEXT_PUBLIC_CONTACT_URL` 設定（沒設就連到 GitHub 個人頁）
+- 出事時怎麼辦：見 `docs/INCIDENT.md`
 - 還沒有金流、白話地圖、前後比較、分享卡（SPEC Phase 2）

@@ -11,7 +11,9 @@ import { ScoreRing } from "./ScoreRing";
 
 const AI_CATS = new Set(["auth", "drift"]);
 
-export function ReportView({ report, previous, onRescan }: { report: Report; previous: Previous | null; onRescan: () => Promise<void> }) {
+export function ReportView({ report, previous, onRescan, expired = false }: {
+  report: Report; previous: Previous | null; onRescan: () => Promise<void>; expired?: boolean;
+}) {
   const [advanced, setAdvanced] = useState(false);
   const [rescanning, setRescanning] = useState(false);
   useEffect(() => {
@@ -89,7 +91,11 @@ export function ReportView({ report, previous, onRescan }: { report: Report; pre
         })}
       </div>
 
-      <ImprovePanel report={report} previous={previous} />
+      {expired && (
+        <p role="status" className="rounded-card border border-border bg-surface p-4 text-sm text-muted">{copy.report.expired}</p>
+      )}
+
+      {!expired && <ImprovePanel report={report} previous={previous} />}
 
       {critical.length > 1 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-critical/60 bg-surface p-4">
@@ -99,7 +105,7 @@ export function ReportView({ report, previous, onRescan }: { report: Report; pre
       )}
 
       <div className="flex flex-col gap-3">
-        {report.findings.length === 0 && <p className="text-muted">{copy.report.noFindings}</p>}
+        {report.findings.length === 0 && !expired && <p className="text-muted">{copy.report.noFindings}</p>}
         {report.findings.map((f, i) => (
           <FindingCard key={f.fingerprint + i} f={f} advanced={advanced} open={i === 0} />
         ))}

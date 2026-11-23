@@ -34,6 +34,7 @@ export interface ScanRow {
   token_usage: { total: { input_tokens: number; output_tokens: number; cost_usd: number; cost_twd: number } } | null;
   error: string | null;
   created_at: string;
+  finished_at: string | null;
 }
 
 export interface Repo {
