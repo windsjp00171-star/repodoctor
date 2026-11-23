@@ -104,4 +104,31 @@ set role authenticated;
 select pg_temp.expect_fail($$select public.kick_worker()$$, 'call kick_worker directly');
 reset role;
 
+-- ── 刪除我的所有資料：只刪自己的，健檢與結果一起刪，別人的不受影響 ──
+set role service_role;
+insert into public.findings (scan_id, user_id, category, severity, title, plain_explanation, advanced_explanation, fix_prompt, fingerprint)
+  select id, user_id, 'secrets', 'critical', 't', 'p', 'a', 'f', 'fp' from public.scans
+  where user_id = '00000000-0000-0000-0000-00000000000a' limit 1;
+insert into public.scans (repo_id, user_id) values ('20000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+delete from public.installations where user_id = '00000000-0000-0000-0000-00000000000a';
+reset role;
+do $$ begin
+  if exists (select 1 from public.installations where user_id = '00000000-0000-0000-0000-00000000000a') then raise exception 'A installations left'; end if;
+  if exists (select 1 from public.repos where user_id = '00000000-0000-0000-0000-00000000000a') then raise exception 'A repos left'; end if;
+  if exists (select 1 from public.scans where user_id = '00000000-0000-0000-0000-00000000000a') then raise exception 'A scans left'; end if;
+  if exists (select 1 from public.findings where user_id = '00000000-0000-0000-0000-00000000000a') then raise exception 'A findings left'; end if;
+  if not exists (select 1 from public.scans where user_id = '00000000-0000-0000-0000-00000000000b') then raise exception 'B data must survive'; end if;
+end $$;
+-- B 不能刪 A 的（RLS 擋下：刪 0 筆，不報錯）
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+delete from public.installations where user_id = '00000000-0000-0000-0000-00000000000b';
+reset role;
+do $$ begin
+  if not exists (select 1 from public.installations where user_id = '00000000-0000-0000-0000-00000000000b') then raise exception 'A deleted B''s data'; end if;
+end $$;
+
 select 'ALL RLS TESTS PASSED';

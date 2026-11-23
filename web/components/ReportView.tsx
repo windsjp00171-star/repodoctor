@@ -107,7 +107,7 @@ export function ReportView({ report, onRescan }: { report: Report; onRescan: () 
             ? `${copy.report.cost}：NT$${cost.cost_twd}（US$${cost.cost_usd.toFixed(4)}，${(cost.input_tokens + cost.output_tokens).toLocaleString()} token）`
             : copy.report.free}
         </p>
-        <p>{copy.report.keyNote}</p>
+        <p>{copy.report.keyNote} <Link href="/security" className="text-primary underline-offset-4 hover:underline">{copy.dashboard.security}</Link></p>
         <p>{copy.report.scoreNote}</p>
       </footer>
     </section>
