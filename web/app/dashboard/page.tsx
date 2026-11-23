@@ -10,7 +10,6 @@ import type { Repo } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 const SLUG = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
-const UNINSTALL_URL = "https://github.com/settings/installations";
 
 /** 帶上使用者的 GitHub 帳號 id，GitHub 會跳過「要裝在哪個帳號」那一頁，直接選 repo。 */
 function installUrl(githubId: string | null) {
@@ -53,12 +52,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
       </header>
 
-      {params.deleted && (
-        <p role="status" className="rounded-card border border-healthy/60 bg-surface p-4 text-sm">
-          {d.deleted}{" "}
-          <a href={UNINSTALL_URL} className="text-primary underline-offset-4 hover:underline">{d.uninstall}</a>
-        </p>
-      )}
       {params.delete_error && (
         <p role="alert" className="rounded-card border border-critical/60 bg-surface p-4 text-sm text-critical">{copy.errors.deleteFailed}</p>
       )}

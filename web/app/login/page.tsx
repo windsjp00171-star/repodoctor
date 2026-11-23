@@ -2,6 +2,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { copy } from "@/lib/copy";
+import { footer } from "@/lib/legal";
 import { createClient } from "@/lib/supabase/client";
 
 function LoginInner() {
@@ -24,6 +25,9 @@ function LoginInner() {
         className="rounded-md bg-primary px-5 py-3 font-semibold text-bg transition hover:brightness-110 disabled:opacity-60">
         {busy ? "…" : copy.login.button}
       </button>
+      <p className="text-xs text-muted">
+        {copy.login.agreeBefore}<a href="/terms" className="text-primary hover:underline">{footer.terms}</a>{copy.login.agreeAnd}<a href="/privacy" className="text-primary hover:underline">{footer.privacy}</a>
+      </p>
       <a href="/security" className="text-sm text-muted underline-offset-4 hover:text-text hover:underline">{copy.landing.securityLink}</a>
     </section>
   );

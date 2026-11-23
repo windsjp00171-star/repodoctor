@@ -48,3 +48,4 @@ CODE_EXTS = {".py", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".mjs", ".c
 # ── 雲端 worker（runner.py）──
 POLL_SECONDS = 3                    # 沒事做時多久問一次資料庫
 DAILY_SCANS_PER_USER = 10           # 測試期每人每天的健檢次數上限（擋濫用與 AI 成本）
+RETENTION_DAYS = 90                 # 健檢細節（findings）保存天數，隱私權政策寫的就是這個數字
