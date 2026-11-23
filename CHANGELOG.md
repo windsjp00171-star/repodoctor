@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 修正
+- 健檢完成後報告頁出現 404：scans 與 repos 之間有兩條外鍵，查詢改為明確指定 repo_id；讀取失敗改為顯示錯誤，不再假裝成 404
 ### 新增
 - 免費版健檢主機：用 GitHub Actions 跑 worker，有人發起健檢或安裝 App 時由 Supabase 立刻叫醒（另每 3 小時排程一次當保險）；Render 付費版的設定步驟保留在 SETUP.md
 ### 修正
