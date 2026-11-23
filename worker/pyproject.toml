@@ -1,6 +1,7 @@
 [project]
 name = "repodoctor-worker"
 version = "0.1.0"
+license = "AGPL-3.0-only"
 description = "RepoDoctor 健檢引擎（Phase 0）"
 requires-python = ">=3.12"
 dependencies = ["anthropic>=2.0", "requests>=2.31", "PyJWT[crypto]>=2.8"]

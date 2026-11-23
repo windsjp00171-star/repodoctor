@@ -1,6 +1,6 @@
 # CLAUDE.md — RepoDoctor
 
-給在這個 repo 工作的 Claude Code 看的持久規則。產品規格在 [`docs/SPEC.md`](docs/SPEC.md)，
+給在這個 repo 工作的 Claude Code 看的持久規則。產品規格書（含定價）不在這個公開 repo，存在私人 repo `claude-storage/repodoctor/SPEC.md`，
 全域規範（EmmArk）照常適用；本檔只寫這個專案自己的規則。
 
 ## 專案是什麼
@@ -87,6 +87,7 @@ pytest
 
 ## 開發流程
 
+- **這是公開 repo（AGPL-3.0）**：不要 commit 金鑰、使用者資料、商業計畫或真實的健檢報告；示範一律用假資料
 - 每次 commit 前更新 `CHANGELOG.md`（Rule 16）
 - 工作階段結束輸出 Session Snapshot（Rule 13）
 - 測試通過就直接合併，不用再問（Rule 19）
