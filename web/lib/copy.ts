@@ -7,8 +7,10 @@ export const copy = {
   landing: {
     headline: "用 AI 寫的程式，交給 RepoDoctor 健檢",
     sub: "連上 GitHub，用中文白話告訴你專案哪裡有危險：金鑰外洩、資料表沒上鎖、頁面沒登入也能進。每個問題附一段可以直接貼給 Claude Code 的修復指令。",
-    cta: "用 GitHub 登入",
+    cta: "免費健檢我的專案",
+    ctaNote: "用 GitHub 帳號登入，三步驟完成，不用安裝任何東西。",
     dashboard: "到我的專案",
+    securityLink: "我們怎麼保護你的程式碼 →",
     privacyTitle: "你的程式碼怎麼處理",
     privacy: [
       "只要唯讀權限，而且只看你勾選的 repo。我們不能改你的程式，也不會開 PR。",
@@ -18,23 +20,91 @@ export const copy = {
   },
   login: {
     title: "登入 RepoDoctor",
-    sub: "用 GitHub 帳號登入。登入只會讀你的公開資料（名字、頭像），不會讀任何 repo。",
+    sub: "用 GitHub 帳號登入。登入只會讀你的帳號名稱、頭像和 email，碰不到任何 repo。",
     button: "用 GitHub 登入",
     error: "登入沒有成功，請再試一次。",
   },
   dashboard: {
     title: "我的專案",
     logout: "登出",
-    installTitle: "第一步：讓 RepoDoctor 讀得到你的 repo",
-    installSub: "安裝 RepoDoctor 的 GitHub App，只勾你想健檢的 repo。權限只有「讀程式碼」，改不了任何東西。",
-    install: "安裝 GitHub App",
+    installTitle: "最後一步：選一個要健檢的專案",
+    installSub: "按下按鈕會到 GitHub 的頁面。照著做，大約 30 秒：",
+    installSteps: [
+      { title: "選「Only select repositories」", body: "只讓我們看你選的專案，其他的我們完全看不到。" },
+      { title: "在下拉選單選一個專案", body: "之後想加、想移除都可以再改。" },
+      { title: "按綠色的「Install」", body: "畫面上寫的「Read access to code」就是唯讀：我們只能看、不能改。" },
+    ],
+    install: "前往 GitHub 選專案",
+    installSecurity: "為什麼這樣是安全的？",
     manage: "新增或調整可以健檢的 repo",
-    pending: "正在跟 GitHub 確認你的安裝……大約一兩分鐘，之後重新整理這一頁就會看到你的 repo。",
+    pending: "正在跟 GitHub 確認……這一頁會自己更新，通常一兩分鐘。",
     rejected: "這個安裝沒有通過確認：",
     noRepos: "還沒有可以健檢的 repo。安裝 App 時記得勾選 repo。",
     queued: "排隊中",
     running: "健檢中",
     failed: "上次失敗",
+    security: "隱私與安全",
+    deleteTitle: "刪除我的所有資料",
+    deleteBody: "會刪掉你在 RepoDoctor 的所有健檢紀錄、找到的問題和專案清單，無法復原。",
+    deleteConfirm: "確定刪除",
+    deleteCancel: "取消",
+    deleted: "你的資料已經刪除。最後一步：到 GitHub 移除 RepoDoctor App，我們就連讀都讀不到了。",
+    uninstall: "到 GitHub 移除 App →",
+  },
+  security: {
+    title: "隱私與安全",
+    lede: "你把程式碼交給我們健檢，我們用下面這些方式保護它。每一條都是程式實際的做法，不是口號。",
+    sections: [
+      {
+        title: "我們拿到的權限：只能讀，不能改",
+        items: [
+          "GitHub App 只申請兩個權限：讀程式碼（Contents: Read-only）和讀基本資料（Metadata: Read-only）。GitHub 會在安裝頁上列給你看。",
+          "我們沒辦法修改你的程式、沒辦法開 PR、沒辦法刪除任何東西——不是「不會」，是 GitHub 不給這個權限。",
+          "只看得到你安裝時勾選的專案，其他專案我們完全看不到。",
+          "「用 GitHub 登入」只讀你的帳號名稱、頭像和 email，碰不到任何 repo。",
+        ],
+      },
+      {
+        title: "你的程式碼：用完就刪",
+        items: [
+          "健檢時，程式碼被下載到一台臨時的機器，只下載最新的版本。",
+          "健檢一結束，程式碼立刻刪除；目前那台臨時機器本身也會在健檢後被銷毀。",
+          "我們的資料庫裡沒有你的程式碼。",
+          "下載用的 GitHub 通行證效期只有 1 小時，而且只在下載那一刻使用。",
+        ],
+      },
+      {
+        title: "我們存了什麼",
+        items: [
+          "健檢報告：分數、找到的問題、說明和修復指令。",
+          "每個問題的檔案名稱、行號，以及那一行的程式碼片段。片段裡如果有金鑰，只留前 4 碼，其餘遮掉。",
+          "你的 GitHub 帳號名稱和你勾選的專案名稱。",
+          "每個人只看得到自己的資料，資料庫每張表都有上鎖（Row Level Security），連別的使用者用技術手段也讀不到。",
+        ],
+      },
+      {
+        title: "AI 分析（你勾選才會用）",
+        items: [
+          "只送挑出來的片段（例如路由的開頭幾行），不送整個專案。",
+          "送出前，所有疑似金鑰的字串都會被遮掉，連前 4 碼都不留；送出前還會再檢查一次，發現漏網的就整個中止。",
+          "放金鑰的檔案（例如 .env）完全不送。",
+        ],
+      },
+      {
+        title: "你隨時可以收回",
+        items: [
+          "到 GitHub 移除 RepoDoctor App，我們立刻失去讀取權限。",
+          "在「我的專案」頁最下面按「刪除我的所有資料」，你的健檢紀錄會全部刪除。",
+        ],
+      },
+    ],
+    limitsTitle: "我們做不到的事，也先說清楚",
+    limits: [
+      "健檢報告會提到你程式裡的問題（例如哪個檔案有金鑰），這些報告存在我們的資料庫，只有你看得到。",
+      "我們使用的服務：Supabase（資料庫，東京）、Vercel（網站）、GitHub Actions（健檢主機）；開啟 AI 分析時另外使用 Anthropic Claude API。",
+      "這是測試中的服務，如果你的專案有非常敏感的內容，建議先用一個不重要的專案試試看。",
+    ],
+    back: "← 回首頁",
   },
   projects: {
     lastScan: "上次健檢",
@@ -87,6 +157,7 @@ export const copy = {
     notFound: "找不到這次健檢",
     workerFailed: "健檢沒有完成",
     startFailed: "沒辦法開始健檢，請重新整理後再試一次。",
+    deleteFailed: "刪除沒有成功，請重新整理後再試一次。",
   },
 };
 

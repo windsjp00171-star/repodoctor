@@ -24,6 +24,7 @@ function LoginInner() {
         className="rounded-md bg-primary px-5 py-3 font-semibold text-bg transition hover:brightness-110 disabled:opacity-60">
         {busy ? "…" : copy.login.button}
       </button>
+      <a href="/security" className="text-sm text-muted underline-offset-4 hover:text-text hover:underline">{copy.landing.securityLink}</a>
     </section>
   );
 }
