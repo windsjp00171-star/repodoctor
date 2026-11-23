@@ -157,8 +157,12 @@ def process_deletion_requests():
 
 def tick() -> bool:
     """處理一輪。回傳這一輪有沒有做事。"""
-    process_deletion_requests()
-    purge_expired()
+    # 隱私的兩件事失敗（例如 migration 003 還沒跑）不可以連累健檢本身
+    for job in (process_deletion_requests, purge_expired):
+        try:
+            job()
+        except Exception:
+            log.exception("%s failed", job.__name__)
     process_installations()
     claimed = supabase.rpc("claim_next_scan").execute().data
     for scan in claimed or []:

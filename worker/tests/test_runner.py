@@ -150,3 +150,19 @@ def test_purge_uses_configured_retention(monkeypatch):
     monkeypatch.setattr(runner, "supabase", DB())
     runner.purge_expired()
     assert calls == [("purge_expired_findings", {"retention_days": config.RETENTION_DAYS})]
+
+
+def test_privacy_jobs_failing_does_not_stop_scans(monkeypatch):
+    def boom():
+        raise RuntimeError("column delete_requested_at does not exist")
+    monkeypatch.setattr(runner, "process_deletion_requests", boom)
+    monkeypatch.setattr(runner, "purge_expired", boom)
+    monkeypatch.setattr(runner, "process_installations", lambda: None)
+    scanned = []
+    monkeypatch.setattr(runner, "process_scan", scanned.append)
+
+    class DB:
+        def rpc(self, fn, *a):
+            return FakeQuery([{"id": "s1"}])
+    monkeypatch.setattr(runner, "supabase", DB())
+    assert runner.tick() is True and scanned == [{"id": "s1"}]
