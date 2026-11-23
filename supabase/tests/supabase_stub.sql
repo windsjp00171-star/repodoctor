@@ -7,8 +7,8 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
 end $$;
 grant usage on schema public to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+-- 刻意不設 default privileges：模擬建專案時「Grant API access to new tables automatically」沒勾，
+-- 確認 migration 自己把該給的權限都明寫了
 
 create schema auth;
 grant usage on schema auth to anon, authenticated, service_role;

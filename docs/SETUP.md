@@ -9,7 +9,13 @@
 
 ## 1. Supabase（資料庫＋登入）
 
-1. 到 https://supabase.com 建一個新專案（Free 方案就夠測試期用）。地區選 Northeast Asia (Tokyo)。
+1. 到 https://supabase.com 建一個新專案（Free 方案就夠測試期用）：
+   - Project name：`repodoctor`
+   - Database password：按 Generate，存進密碼管理器（網站和 worker 用不到，你自己進資料庫才用）
+   - Region：**Northeast Asia (Tokyo)**（不要用 Auto）
+   - GitHub (optional)：不用連
+   - Enable Data API：**勾**
+   - Grant API access to new tables automatically：**不要勾**（權限已經寫在 migration 裡，不靠自動開放）
 2. 左邊 **SQL Editor** → 貼上 `supabase/migrations/001_init.sql` 的全部內容 → Run。
 3. 左邊 **Project Settings → API**，記下：
    - `Project URL` → 之後填 `NEXT_PUBLIC_SUPABASE_URL` 和 `SUPABASE_URL`

@@ -130,13 +130,17 @@ create policy "start scan on own repo" on public.scans     for insert to authent
   );
 create policy "own findings"       on public.findings      for select to authenticated using (user_id = (select auth.uid()));
 
--- 欄位層級：使用者能改、能新增的欄位只有這些（plan、status、分數等只有 worker 能寫）
-revoke insert, update, delete on public.profiles, public.installations, public.repos, public.scans, public.findings from anon, authenticated;
+-- 權限一律明寫，不靠 Supabase「自動開放新資料表」那個選項（建議關掉）。
+--   authenticated：可以讀（RLS 再過濾成只有自己的）；能改、能新增的欄位只有下面這幾個
+--   service_role（worker）：全部
+--   anon（沒登入）：什麼都沒有
+revoke all on public.profiles, public.installations, public.repos, public.scans, public.findings from anon, authenticated;
+grant select on public.profiles, public.installations, public.repos, public.scans, public.findings to authenticated;
+grant all on public.profiles, public.installations, public.repos, public.scans, public.findings to service_role;
 grant update (report_mode) on public.profiles to authenticated;
 grant insert (github_installation_id) on public.installations to authenticated;
 grant delete on public.installations to authenticated;
 grant insert (repo_id, use_ai) on public.scans to authenticated;
-revoke all on public.profiles, public.installations, public.repos, public.scans, public.findings from anon;
 
 -- ── worker 用：搶下一個待辦的健檢（多個 worker 同時跑也不會搶到同一個）──
 create function public.claim_next_scan() returns setof public.scans
