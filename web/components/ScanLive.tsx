@@ -4,7 +4,7 @@ import type { ScanRow } from "@/lib/types";
 
 /** 掃描中（SPEC 標誌時刻 1）：一道掃描光、真的進度、真的檔名、即時的問題數。 */
 export function ScanLive({ project, scan, recentFiles }: { project: string; scan: ScanRow; recentFiles: string[] }) {
-  const progress = { progress: scan.progress, stage: scan.status === "queued" ? "排隊中，馬上輪到你" : scan.stage ?? "", found: scan.found };
+  const progress = { progress: scan.progress, stage: scan.status === "queued" ? copy.scanning.queued : scan.stage ?? "", found: scan.found };
   return (
     <section className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-4">

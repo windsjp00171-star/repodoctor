@@ -29,7 +29,7 @@ export const copy = {
     installSub: "安裝 RepoDoctor 的 GitHub App，只勾你想健檢的 repo。權限只有「讀程式碼」，改不了任何東西。",
     install: "安裝 GitHub App",
     manage: "新增或調整可以健檢的 repo",
-    pending: "正在跟 GitHub 確認你的安裝……幾秒鐘後重新整理這一頁。",
+    pending: "正在跟 GitHub 確認你的安裝……大約一兩分鐘，之後重新整理這一頁就會看到你的 repo。",
     rejected: "這個安裝沒有通過確認：",
     noRepos: "還沒有可以健檢的 repo。安裝 App 時記得勾選 repo。",
     queued: "排隊中",
@@ -49,6 +49,7 @@ export const copy = {
   },
   scanning: {
     title: "掃描中",
+    queued: "排隊中：健檢主機正在啟動，通常一兩分鐘內開始。這一頁會自己更新，不用重新整理。",
     found: "已發現問題",
     files: "最近掃過的檔案",
     failed: "健檢失敗",

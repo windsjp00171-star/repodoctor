@@ -1,0 +1,49 @@
+# RepoDoctor 健檢主機（免費版）：用 GitHub Actions 跑 worker/runner.py。
+#
+# 什麼時候會跑：
+#   1. 有人按「開始健檢」或裝好 GitHub App → Supabase 的 trigger 立刻叫醒這裡（workflow_dispatch）
+#   2. 每 3 小時自動跑一次當保險（通知漏掉也不會一直卡在排隊）
+# 每次都跑 `runner.py --once`：把目前所有待辦處理完就結束，不常駐，省 Actions 分鐘數。
+#
+# 之後改用 Render 常駐（docs/SETUP.md「選項 B」）時，把這個檔案刪掉或停用即可，程式不用改。
+#
+# 需要的 repository secrets（Settings → Secrets and variables → Actions）：
+#   SUPABASE_URL、SUPABASE_SECRET_KEY、APP_ID、APP_PRIVATE_KEY、（選用）ANTHROPIC_API_KEY
+#   ※ GitHub 不准 secret 名稱用 GITHUB_ 開頭，所以 App 的兩個叫 APP_ID／APP_PRIVATE_KEY
+name: worker
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */3 * * *"
+
+# 同時只跑一個；有新的觸發就排在後面，不會兩個 worker 搶同一筆
+concurrency:
+  group: repodoctor-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: worker/pyproject.toml
+      - run: pip install -e ".[worker]"
+      - run: python runner.py --once
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GITHUB_APP_ID: ${{ secrets.APP_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

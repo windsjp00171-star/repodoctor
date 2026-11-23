@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 新增
+- 免費版健檢主機：用 GitHub Actions 跑 worker，有人發起健檢或安裝 App 時由 Supabase 立刻叫醒（另每 3 小時排程一次當保險）；Render 付費版的設定步驟保留在 SETUP.md
 ### 修正
 - 部署時漏設 Supabase 環境變數，網站改成用中文說明少了哪一個，不再只顯示 MIDDLEWARE_INVOCATION_FAILED
 
