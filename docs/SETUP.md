@@ -154,6 +154,28 @@
 
 ---
 
+## 7. 開啟 AI 分析（登入與權限、重複、規範落差）
+
+程式已經接好，放好金鑰就會動。金鑰**只放在健檢主機那邊**（GitHub Actions secrets；改 Render 後放 Render），
+不會出現在網站上。
+
+1. **申請金鑰**：https://console.anthropic.com → API Keys → Create Key（名字 `repodoctor`），複製 `sk-ant-...`
+2. **先設花費上限**（防止意外燒錢）：Console → Settings → **Limits** → 設每月上限，例如 US$10。
+   目前估一次健檢約 NT$1–7（路由多的專案貴一點），10 位測試者每人每天最多 10 次
+3. **放進 GitHub**：`repodoctor` repo → Settings → Secrets and variables → Actions → New repository secret
+   - Name：`ANTHROPIC_API_KEY`
+   - Secret：剛複製的 `sk-ant-...`
+4. **測試金鑰**：Actions → `worker` → Run workflow → 勾 **「只測試 Anthropic API 金鑰能不能用」** → Run。
+   點進去看「測試 AI 金鑰」那一步：
+   - 寫「AI 金鑰可以用」→ 成功（這次測試花費不到台幣 1 分錢，不送任何程式碼）
+   - 寫「AI 金鑰測試失敗：……」→ 照中文原因處理（金鑰貼錯、還沒儲值等）
+5. **網站打開 AI 選項**：Vercel → `repodoctor` → Settings → Environment Variables →
+   `NEXT_PUBLIC_AI_ENABLED` 改成 `true` → Deployments → Redeploy
+6. **試一次**：網站「我的專案」勾「加上 AI 分析」→ 開始健檢。
+   報告最下面會寫這次 AI 花了多少（美金與台幣），「登入與權限」「規範落差」也會有分數
+
+之後改用 Render：Render 的 Environment Variables 一樣加 `ANTHROPIC_API_KEY`（5B 的表格裡已經列了）。
+
 ## 這一版的限制（之後再做）
 
 - 只支援安裝在**個人帳號**上的 GitHub App；裝在組織上的會被拒絕（要另外確認你是那個組織的成員）

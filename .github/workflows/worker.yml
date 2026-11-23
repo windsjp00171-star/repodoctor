@@ -14,6 +14,11 @@ name: worker
 
 on:
   workflow_dispatch:
+    inputs:
+      check_ai:
+        description: "只測試 Anthropic API 金鑰能不能用（不做健檢）"
+        type: boolean
+        default: false
   schedule:
     - cron: "17 */3 * * *"
 
@@ -40,7 +45,14 @@ jobs:
           cache: pip
           cache-dependency-path: worker/pyproject.toml
       - run: pip install -e ".[worker]"
-      - run: python runner.py --once
+      - name: 測試 AI 金鑰
+        if: ${{ inputs.check_ai }}
+        run: python -m cli --check-ai
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: 處理待辦的健檢
+        if: ${{ !inputs.check_ai }}
+        run: python runner.py --once
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
