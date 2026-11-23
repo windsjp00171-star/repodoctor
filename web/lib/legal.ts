@@ -126,4 +126,7 @@ export const terms: { title: string; lede: string; sections: Section[] } = {
   ],
 };
 
-export const footer = { privacy: "隱私權政策", terms: "使用條款", security: "隱私與安全", contact: "聯絡我們" };
+// AGPL-3.0 第 13 條：架成網站時要讓使用者拿得到原始碼
+export const SOURCE_URL = "https://github.com/windsjp00171-star/repodoctor";
+
+export const footer = { privacy: "隱私權政策", terms: "使用條款", security: "隱私與安全", contact: "聯絡我們", source: "原始碼（AGPL-3.0）" };
