@@ -20,3 +20,11 @@ create function auth.uid() returns uuid language sql stable as
 grant execute on function auth.uid() to anon, authenticated, service_role;
 
 create publication supabase_realtime;
+
+-- 002 用到的：Vault（存 token）與 pg_net（送 HTTP）。這裡只記下「有沒有被叫、叫了什麼」。
+create schema vault;
+create table vault.decrypted_secrets (name text primary key, decrypted_secret text);
+create schema net;
+create table net.calls (url text, body jsonb, headers jsonb);
+create function net.http_post(url text, body jsonb, headers jsonb) returns bigint language sql as
+  $$ insert into net.calls values (url, body, headers); select 1::bigint $$;
