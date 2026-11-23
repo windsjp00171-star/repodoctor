@@ -7,7 +7,7 @@ import os
 supabase = None
 
 _url = os.environ.get("SUPABASE_URL")
-_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+_key = os.environ.get("SUPABASE_SECRET_KEY")
 if _url and _key:
     from supabase import create_client
 

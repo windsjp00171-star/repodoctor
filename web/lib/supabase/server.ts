@@ -1,11 +1,11 @@
 // 伺服器端 Supabase client（Server Component、Route Handler 用）。全站只在這裡建立。
-// 一樣只用 anon key ＋ 使用者自己的登入 cookie，所以資料庫的 RLS 照樣生效。
+// 一樣只用公開的 publishable key ＋ 使用者自己的登入 cookie，所以資料庫的 RLS 照樣生效。
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function createClient() {
   const store = await cookies();
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {

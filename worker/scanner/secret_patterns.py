@@ -133,7 +133,7 @@ def detect(text: str, include_loose: bool = False, allow_unquoted: bool = False)
         role = _jwt_role(m.group(0))
         if role == "service_role":
             add(Secret(m.start(), m.end(), m.group(0), "Supabase service role key",
-                       "Supabase 後台 → Project Settings → API", "SUPABASE_SERVICE_ROLE_KEY", True))
+                       "Supabase 後台 → Project Settings → API", "SUPABASE_SECRET_KEY", True))
         elif include_loose:
             # anon key 本來就是公開的，不報告；但送 AI 時一樣遮掉
             add(Secret(m.start(), m.end(), m.group(0), "JWT", "", "", False))

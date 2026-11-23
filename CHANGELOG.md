@@ -7,6 +7,7 @@
 - 讓別人也能用（Phase 1，尚未部署）：
   - GitHub 登入（Supabase Auth）＋ GitHub App 唯讀安裝，只讀使用者勾選的 repo
   - 雲端 worker：驗證安裝屬於本人才同步 repo、淺層 clone、掃完立刻刪除程式碼、每人每天健檢次數上限
+  - 環境變數改用 Supabase 新的金鑰名稱（publishable key／secret key）
   - 資料表權限全部明寫在 migration（不依賴 Supabase「自動開放新資料表」選項）
   - 資料庫五張表全部開 RLS，使用者只能看自己的資料、只能寫「發起」類欄位；附本機 RLS 測試
   - 掃描進度改用 Supabase Realtime

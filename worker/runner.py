@@ -151,7 +151,7 @@ def main():
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if supabase is None:
-        raise SystemExit("沒有設定 SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY")
+        raise SystemExit("沒有設定 SUPABASE_URL / SUPABASE_SECRET_KEY")
     while True:
         busy = tick()
         if args.once and not busy:

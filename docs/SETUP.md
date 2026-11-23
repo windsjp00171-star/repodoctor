@@ -17,10 +17,10 @@
    - Enable Data API：**勾**
    - Grant API access to new tables automatically：**不要勾**（權限已經寫在 migration 裡，不靠自動開放）
 2. 左邊 **SQL Editor** → 貼上 `supabase/migrations/001_init.sql` 的全部內容 → Run。
-3. 左邊 **Project Settings → API**，記下：
-   - `Project URL` → 之後填 `NEXT_PUBLIC_SUPABASE_URL` 和 `SUPABASE_URL`
-   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`（這把可以公開）
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`（**這把絕對不能外流，只給 worker**）
+3. 左邊 **Project Settings → API Keys**，記下：
+   - **Publishable key**（`sb_publishable_` 開頭）→ `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`（這把可以公開）
+   - **Secret key**（`sb_secret_` 開頭，在同一頁下面的 Secret keys）→ `SUPABASE_SECRET_KEY`（**這把絕對不能外流，只給 worker**）
+   - **Project URL**（專案首頁上的 `https://xxxx.supabase.co`）→ `NEXT_PUBLIC_SUPABASE_URL` 和 `SUPABASE_URL`
 
 ## 2. GitHub 登入用的 OAuth App
 
@@ -63,11 +63,11 @@
    | 名稱 | 值 |
    |---|---|
    | `NEXT_PUBLIC_SUPABASE_URL` | 步驟 1 |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 步驟 1 的 anon key |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 步驟 1 的 publishable key |
    | `NEXT_PUBLIC_GITHUB_APP_SLUG` | 步驟 3 |
    | `NEXT_PUBLIC_AI_ENABLED` | 先填 `false`；worker 設好 Anthropic 金鑰後改 `true` |
 
-   **不要**把 service_role key、GitHub 私鑰填在這裡。
+   **不要**把 secret key、GitHub 私鑰填在這裡。
 4. Deploy。拿到網址後，回去把步驟 2、3 裡的「你的網站網址」改成真的網址。
 
 ★ Vercel 免費方案只限非商業用途，開始收費時要升級（SPEC 有寫）。
@@ -83,7 +83,7 @@
    | 名稱 | 值 |
    |---|---|
    | `SUPABASE_URL` | 步驟 1 |
-   | `SUPABASE_SERVICE_ROLE_KEY` | 步驟 1 的 service_role key |
+   | `SUPABASE_SECRET_KEY` | 步驟 1 的 secret key |
    | `GITHUB_APP_ID` | 步驟 3 |
    | `GITHUB_APP_PRIVATE_KEY` | 步驟 3 的 .pem 內容（整段貼上） |
    | `ANTHROPIC_API_KEY` | 要開 AI 分析才填 |

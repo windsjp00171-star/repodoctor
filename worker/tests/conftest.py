@@ -84,7 +84,7 @@ def leaky_flask(tmp_path):
             create table auth.not_ours (id int);
             alter table orders enable row level security;
         """,
-        "static/app.js": "const k = process.env.SUPABASE_SERVICE_ROLE_KEY;\n",
+        "static/app.js": "const k = process.env.SUPABASE_SECRET_KEY;\n",
         ".env": f"GROQ_API_KEY={FAKE['groq']}\n",
         "README.md": "# demo\n",
         ".gitignore": "__pycache__/\n",
