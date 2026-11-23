@@ -1,0 +1,94 @@
+// 所有介面文字集中在這裡（SPEC：繁體中文、集中放在文案檔，方便之後改寫）。
+
+export const copy = {
+  brand: "RepoDoctor",
+  tagline: "你的程式健檢醫生",
+  intro: "選一個專案，按「開始健檢」。幾秒鐘後，你會知道哪裡有危險、先修哪個，以及可以直接貼給 Claude Code 的修復指令。",
+  landing: {
+    headline: "用 AI 寫的程式，交給 RepoDoctor 健檢",
+    sub: "連上 GitHub，用中文白話告訴你專案哪裡有危險：金鑰外洩、資料表沒上鎖、頁面沒登入也能進。每個問題附一段可以直接貼給 Claude Code 的修復指令。",
+    cta: "用 GitHub 登入",
+    dashboard: "到我的專案",
+    privacyTitle: "你的程式碼怎麼處理",
+    privacy: [
+      "只要唯讀權限，而且只看你勾選的 repo。我們不能改你的程式，也不會開 PR。",
+      "健檢時把程式下載到暫存資料夾，掃完立刻刪除，不保存你的程式碼。",
+      "找到的金鑰只記前 4 碼和位置，完整的值不存、也不送給 AI。",
+    ],
+  },
+  login: {
+    title: "登入 RepoDoctor",
+    sub: "用 GitHub 帳號登入。登入只會讀你的公開資料（名字、頭像），不會讀任何 repo。",
+    button: "用 GitHub 登入",
+    error: "登入沒有成功，請再試一次。",
+  },
+  dashboard: {
+    title: "我的專案",
+    logout: "登出",
+    installTitle: "第一步：讓 RepoDoctor 讀得到你的 repo",
+    installSub: "安裝 RepoDoctor 的 GitHub App，只勾你想健檢的 repo。權限只有「讀程式碼」，改不了任何東西。",
+    install: "安裝 GitHub App",
+    manage: "新增或調整可以健檢的 repo",
+    pending: "正在跟 GitHub 確認你的安裝……幾秒鐘後重新整理這一頁。",
+    rejected: "這個安裝沒有通過確認：",
+    noRepos: "還沒有可以健檢的 repo。安裝 App 時記得勾選 repo。",
+    queued: "排隊中",
+    running: "健檢中",
+    failed: "上次失敗",
+  },
+  projects: {
+    lastScan: "上次健檢",
+    never: "還沒健檢過",
+    start: "開始健檢",
+    view: "看報告",
+  },
+  ai: {
+    label: "加上 AI 分析（登入與權限、重複、規範落差）",
+    noKey: "AI 分析還沒開放，目前只跑規則掃描。",
+    hint: "AI 分析需要多等一兩分鐘。",
+  },
+  scanning: {
+    title: "掃描中",
+    found: "已發現問題",
+    files: "最近掃過的檔案",
+    failed: "健檢失敗",
+  },
+  report: {
+    score: "健康分數",
+    back: "回到專案列表",
+    rescan: "重新健檢",
+    plain: "白話",
+    advanced: "進階",
+    fix: "貼給 Claude Code 的修復指令",
+    copy: "複製指令",
+    copied: "已複製",
+    copyFallback: "已選取，請按複製",
+    allCritical: "複製全部緊急問題的指令",
+    noFindings: "這一次沒有發現問題。",
+    needsAi: "需要 AI",
+    notApplicable: "不適用",
+    rulesOnly: "只有規則",
+    cost: "這次健檢的 AI 成本",
+    free: "這次只跑規則掃描，沒有花錢。",
+    keyNote: "報告裡的金鑰只顯示前 4 碼。「資料庫權限」只看專案裡的 SQL 檔，看不到線上資料庫。",
+    scoreNote: "分數公式是初稿：緊急扣 40、高扣 20、中扣 8、低扣 3；有緊急問題總分最高 59。",
+  },
+  categories: {
+    secrets: "金鑰外洩",
+    database: "資料庫權限",
+    auth: "登入與權限",
+    duplication: "重複與散落",
+    drift: "規範落差",
+    hygiene: "專案衛生",
+  } as Record<string, string>,
+  severities: { critical: "緊急", high: "高", medium: "中", low: "低" } as Record<string, string>,
+  errors: {
+    notFound: "找不到這次健檢",
+    workerFailed: "健檢沒有完成",
+    startFailed: "沒辦法開始健檢，請重新整理後再試一次。",
+  },
+};
+
+export const allCriticalPrompt = (project: string, prompts: string[]) =>
+  `以下是 RepoDoctor 對 ${project} 找到的 ${prompts.length} 個緊急問題。請一個一個處理，每處理完一個先停下來讓我確認，再做下一個。\n\n` +
+  prompts.map((p, i) => `── 第 ${i + 1} 個 ──\n${p}`).join("\n\n");
