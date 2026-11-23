@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Noto_Sans_TC } from "next/font/google";
 import Link from "next/link";
-import { CONTACT_URL, footer } from "@/lib/legal";
+import { CONTACT_URL, SOURCE_URL, footer } from "@/lib/legal";
 import { motionCssVars } from "@/lib/motion";
 import "./globals.css";
 
@@ -21,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/terms" className="hover:text-text">{footer.terms}</Link>
           <Link href="/security" className="hover:text-text">{footer.security}</Link>
           <a href={CONTACT_URL} className="hover:text-text">{footer.contact}</a>
+          <a href={SOURCE_URL} className="hover:text-text">{footer.source}</a>
         </footer>
       </body>
     </html>
