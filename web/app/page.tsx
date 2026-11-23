@@ -2,11 +2,20 @@ import Link from "next/link";
 import { copy } from "@/lib/copy";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function Landing() {
+const UNINSTALL_URL = "https://github.com/settings/installations";
+
+export default async function Landing({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   return (
     <>
+      {params.account_deleted && (
+        <p role="status" className="rounded-card border border-healthy/60 bg-surface p-4 text-sm">
+          {copy.dashboard.deleted}{" "}
+          <a href={UNINSTALL_URL} className="text-primary underline-offset-4 hover:underline">{copy.dashboard.uninstall}</a>
+        </p>
+      )}
       <header className="flex flex-col gap-5 pt-8">
         <div className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">{copy.brand}</div>
         <h1 className="max-w-3xl text-4xl font-bold leading-tight text-balance">{copy.landing.headline}</h1>

@@ -136,8 +136,29 @@ def process_scan(scan: dict):
     supabase.table("repos").update({"last_scan_id": scan_id}).eq("id", repo["id"]).execute()
 
 
+# ── 3. 保存期限與帳號刪除（隱私權政策的承諾，用程式保證） ──
+
+def purge_expired():
+    n = supabase.rpc("purge_expired_findings", {"retention_days": config.RETENTION_DAYS}).execute().data
+    if n:
+        log.info("purged %s expired findings", n)
+
+
+def process_deletion_requests():
+    """使用者按了「刪除我的所有資料」：刪 auth 帳號，profiles 以下全部連帶刪除。"""
+    rows = supabase.table("profiles").select("id").not_.is_("delete_requested_at", "null").limit(50).execute().data
+    for row in rows:
+        try:
+            supabase.auth.admin.delete_user(row["id"])
+            log.info("deleted account %s", row["id"])
+        except Exception:
+            log.exception("delete account %s failed; will retry next run", row["id"])
+
+
 def tick() -> bool:
     """處理一輪。回傳這一輪有沒有做事。"""
+    process_deletion_requests()
+    purge_expired()
     process_installations()
     claimed = supabase.rpc("claim_next_scan").execute().data
     for scan in claimed or []:

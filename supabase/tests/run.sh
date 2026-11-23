@@ -7,4 +7,5 @@ psql -qX -d postgres -c "drop database if exists $DB" -c "create database $DB"
 psql -qX -v ON_ERROR_STOP=1 -d $DB -f tests/supabase_stub.sql
 psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/001_init.sql
 psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/002_kick_worker.sql
+psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/003_retention_and_account_deletion.sql
 psql -qX -v ON_ERROR_STOP=1 -d $DB -tA -f tests/rls_test.sql

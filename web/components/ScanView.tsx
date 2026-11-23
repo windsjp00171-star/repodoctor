@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { copy } from "@/lib/copy";
+import { RETENTION_DAYS } from "@/lib/legal";
 import { motion } from "@/lib/motion";
 import { createClient } from "@/lib/supabase/client";
 import type { Previous } from "@/lib/improve";
@@ -22,11 +23,12 @@ export function ScanView({ initial, repoName, initialFindings }: { initial: Scan
   useEffect(() => {
     if (scan.status !== "done") return;
     (async () => {
-      const { data: prev } = await supabase.from("scans").select("id, score, created_at")
+      const { data: prev } = await supabase.from("scans").select("id, score, found, created_at")
         .eq("repo_id", scan.repo_id).eq("status", "done").lt("created_at", scan.created_at)
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (!prev) return;
       const { data: pf } = await supabase.from("findings").select("fingerprint, title, severity").eq("scan_id", prev.id);
+      if (prev.found && !pf?.length) return;  // 上一次的細節已過保存期限：沒得比，不要誤報「全部都是新問題」
       setPrevious({ score: prev.score, created_at: prev.created_at, findings: (pf ?? []) as Previous["findings"] });
     })();
   }, [scan.status, scan.repo_id, scan.created_at, supabase]);
@@ -61,7 +63,11 @@ export function ScanView({ initial, repoName, initialFindings }: { initial: Scan
     if (data) router.push(`/scans/${data.id}`);
   }
 
-  if (scan.status === "done" && (findings.length || !scan.found)) return <ReportView report={toReport(scan, findings)} previous={previous} onRescan={rescan} />;
+  // 細節過了保存期限被 worker 刪掉：照樣顯示分數，並說明原因（不要卡在「掃描中」）
+  const expired = scan.status === "done" && !!scan.found && !findings.length && !!scan.finished_at
+    && Date.now() - new Date(scan.finished_at).getTime() > RETENTION_DAYS * 86_400_000;
+  if (scan.status === "done" && (findings.length || !scan.found || expired))
+    return <ReportView report={toReport(scan, findings)} previous={previous} onRescan={rescan} expired={expired} />;
   if (scan.status === "failed")
     return (
       <section className="flex flex-col gap-3">
