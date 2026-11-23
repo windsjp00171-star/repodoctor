@@ -21,6 +21,18 @@ export default async function Landing() {
           {!user && <p className="text-sm text-muted">{copy.landing.ctaNote}</p>}
         </div>
       </header>
+      <section className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold text-balance">{copy.improve.landingTitle}</h2>
+        <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {copy.improve.landingSteps.map((step, i) => (
+            <li key={step.title} className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
+              <span className="font-num text-2xl font-bold text-primary">{i + 1}</span>
+              <span className="font-semibold">{step.title}</span>
+              <span className="text-sm leading-relaxed text-muted">{step.body}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
       <section className="rounded-card border border-border bg-surface p-6">
         <h2 className="mb-3 text-lg font-bold">{copy.landing.privacyTitle}</h2>
         <ul className="flex flex-col gap-2 text-muted">

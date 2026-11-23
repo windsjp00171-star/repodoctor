@@ -2,14 +2,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { allCriticalPrompt, copy } from "@/lib/copy";
+import type { Previous } from "@/lib/improve";
 import type { Report } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
 import { FindingCard } from "./FindingCard";
+import { ImprovePanel } from "./ImprovePanel";
 import { ScoreRing } from "./ScoreRing";
 
 const AI_CATS = new Set(["auth", "drift"]);
 
-export function ReportView({ report, onRescan }: { report: Report; onRescan: () => Promise<void> }) {
+export function ReportView({ report, previous, onRescan }: { report: Report; previous: Previous | null; onRescan: () => Promise<void> }) {
   const [advanced, setAdvanced] = useState(false);
   const [rescanning, setRescanning] = useState(false);
   useEffect(() => {
@@ -86,6 +88,8 @@ export function ReportView({ report, onRescan }: { report: Report; onRescan: () 
           );
         })}
       </div>
+
+      <ImprovePanel report={report} previous={previous} />
 
       {critical.length > 1 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-critical/60 bg-surface p-4">

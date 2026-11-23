@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { copy } from "@/lib/copy";
 import { motion } from "@/lib/motion";
 import { createClient } from "@/lib/supabase/client";
+import type { Previous } from "@/lib/improve";
 import { type Finding, type ScanRow, toReport } from "@/lib/types";
 import { ReportView } from "./ReportView";
 import { ScanLive } from "./ScanLive";
@@ -15,6 +16,20 @@ export function ScanView({ initial, repoName, initialFindings }: { initial: Scan
   const [findings, setFindings] = useState(initialFindings);
   const [recentFiles, setRecentFiles] = useState<string[]>([]);
   const supabase = useRef(createClient()).current;
+  const [previous, setPrevious] = useState<Previous | null>(null);
+
+  // 同一個 repo 上一次完成的健檢，拿來算「修好了哪些」
+  useEffect(() => {
+    if (scan.status !== "done") return;
+    (async () => {
+      const { data: prev } = await supabase.from("scans").select("id, score, created_at")
+        .eq("repo_id", scan.repo_id).eq("status", "done").lt("created_at", scan.created_at)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!prev) return;
+      const { data: pf } = await supabase.from("findings").select("fingerprint, title, severity").eq("scan_id", prev.id);
+      setPrevious({ score: prev.score, created_at: prev.created_at, findings: (pf ?? []) as Previous["findings"] });
+    })();
+  }, [scan.status, scan.repo_id, scan.created_at, supabase]);
 
   // 掃描進度：Supabase Realtime 推過來（SPEC：真的進度，不是假動畫）。
   // 另外每幾秒補問一次，萬一 Realtime 斷線也不會卡在「掃描中」。
@@ -46,7 +61,7 @@ export function ScanView({ initial, repoName, initialFindings }: { initial: Scan
     if (data) router.push(`/scans/${data.id}`);
   }
 
-  if (scan.status === "done" && (findings.length || !scan.found)) return <ReportView report={toReport(scan, findings)} onRescan={rescan} />;
+  if (scan.status === "done" && (findings.length || !scan.found)) return <ReportView report={toReport(scan, findings)} previous={previous} onRescan={rescan} />;
   if (scan.status === "failed")
     return (
       <section className="flex flex-col gap-3">
