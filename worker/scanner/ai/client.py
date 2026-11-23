@@ -136,3 +136,37 @@ class AIClient:
             return json.loads(text)
         except json.JSONDecodeError as e:
             raise AICheckError("模型回傳的格式不正確") from e
+
+
+def check_key() -> str:
+    """用最便宜的模型打一次極短的請求，確認金鑰可用。不送任何程式碼。
+
+    給「明天放好金鑰後先測一下」用：成功回一段中文說明，失敗丟 AICheckError（中文原因）。
+    """
+    import os
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise AICheckError("沒有設定 ANTHROPIC_API_KEY（GitHub Actions 的 secret 名稱要一字不差）")
+    import anthropic
+
+    model = config.AI_CHECKS["drift"]["model"]
+    try:
+        resp = anthropic.Anthropic(max_retries=1).messages.create(
+            model=model, max_tokens=64, output_config={"effort": "low"},
+            messages=[{"role": "user", "content": "請只回覆：OK"}],
+        )
+    except anthropic.AuthenticationError as e:
+        raise AICheckError("金鑰無效：請確認貼上的是完整的金鑰（sk-ant- 開頭），而且沒有多餘的空白") from e
+    except anthropic.PermissionDeniedError as e:
+        raise AICheckError("金鑰沒有權限：請到 Anthropic Console 確認這把金鑰所在的 workspace 可以用 API") from e
+    except anthropic.RateLimitError as e:
+        raise AICheckError("額度或流量不足：請到 Anthropic Console 確認已儲值、或花費上限還沒用完") from e
+    except anthropic.APIStatusError as e:
+        raise AICheckError(f"Claude API 回 HTTP {e.status_code}") from e
+    except anthropic.APIConnectionError as e:
+        raise AICheckError("連不上 Claude API") from e
+    u = resp.usage
+    ud = {"input_tokens": u.input_tokens or 0, "output_tokens": u.output_tokens or 0}
+    usd = cost_usd(resp.model or model, ud)
+    return (f"AI 金鑰可以用。模型 {resp.model}，這次測試用了 {ud['input_tokens'] + ud['output_tokens']} 個 token，"
+            f"約 US${usd:.6f}（NT${usd * config.USD_TO_TWD:.4f}）")

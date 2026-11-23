@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 新增
+- 開 AI 分析前的準備：`python -m cli --check-ai` 與 GitHub Actions「只測試 AI 金鑰」選項，用極小請求確認金鑰可用並以中文說明失敗原因；SETUP 新增「開啟 AI 分析」步驟（含花費上限）
 ### 修正
 - 健檢完成後報告頁出現 404：scans 與 repos 之間有兩條外鍵，查詢改為明確指定 repo_id；讀取失敗改為顯示錯誤，不再假裝成 404
 ### 新增

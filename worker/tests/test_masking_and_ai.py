@@ -67,3 +67,30 @@ def test_cost_math():
     u = {"input_tokens": 1_000_000, "output_tokens": 1_000_000}
     assert cost_usd("claude-sonnet-5-5", u) == pytest.approx(12.0)
     assert cost_usd("claude-haiku-5-5", u) == pytest.approx(0.60)
+
+
+def test_check_ai_without_key_explains_in_chinese(monkeypatch, capsys):
+    from cli import main
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert main(["--check-ai"]) == 1
+    assert "沒有設定 ANTHROPIC_API_KEY" in capsys.readouterr().err
+
+
+def test_check_ai_with_bad_key_does_not_echo_key(monkeypatch, capsys):
+    import anthropic
+    from cli import main
+    fake = "sk-" + "ant-" + "Zz9" * 14
+    monkeypatch.setenv("ANTHROPIC_API_KEY", fake)
+
+    class Boom:
+        def __init__(self, *a, **k):
+            self.messages = self
+
+        def create(self, **k):
+            import httpx2 as httpx
+            req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+            raise anthropic.AuthenticationError("bad", response=httpx.Response(401, request=req), body=None)
+    monkeypatch.setattr(anthropic, "Anthropic", Boom)
+    assert main(["--check-ai"]) == 1
+    err = capsys.readouterr().err
+    assert "金鑰無效" in err and fake not in err

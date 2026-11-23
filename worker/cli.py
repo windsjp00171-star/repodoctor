@@ -133,7 +133,8 @@ def _summary(r: dict) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="repodoctor", description="RepoDoctor 健檢引擎：輸入本機資料夾，輸出 JSON 健檢報告")
-    ap.add_argument("path", help="要健檢的專案資料夾")
+    ap.add_argument("path", nargs="?", help="要健檢的專案資料夾")
+    ap.add_argument("--check-ai", action="store_true", help="只測試 ANTHROPIC_API_KEY 能不能用（不送任何程式碼，花費不到 1 分錢台幣）")
     ap.add_argument("-o", "--output", help="報告寫到這個檔案（預設印到標準輸出）")
     ap.add_argument("--no-ai", action="store_true", help="只跑規則掃描，不呼叫 Claude API")
     ap.add_argument("--dry-run", action="store_true", help="列出會送給 AI 的內容（已遮罩）與預估 token，不呼叫 API")
@@ -141,6 +142,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-q", "--quiet", action="store_true", help="不印摘要")
     args = ap.parse_args(argv)
 
+    if args.check_ai:
+        from scanner.ai.client import AICheckError, check_key
+        try:
+            print(check_key())
+            return 0
+        except AICheckError as e:
+            print(f"AI 金鑰測試失敗：{e}", file=sys.stderr)
+            return 1
+    if not args.path:
+        ap.error("請給要健檢的專案資料夾")
     report = scan(args.path, use_ai=not args.no_ai, dry_run=args.dry_run, progress_file=args.progress_file)
     text = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
