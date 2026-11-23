@@ -4,9 +4,22 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED = ["/dashboard", "/scans", "/github"];
 
+const REQUIRED_ENV = {
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+};
+
 export async function middleware(request: NextRequest) {
+  // 部署時漏設環境變數：講清楚少了哪一個，不要只丟 MIDDLEWARE_INVOCATION_FAILED
+  const missing = Object.entries(REQUIRED_ENV).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) {
+    return new NextResponse(
+      `網站還沒設定好：少了環境變數 ${missing.join("、")}。\n請在部署平台補上之後重新部署（NEXT_PUBLIC_ 開頭的變數要重新部署才會生效）。`,
+      { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } },
+    );
+  }
   let response = NextResponse.next({ request });
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+  const supabase = createServerClient(REQUIRED_ENV.NEXT_PUBLIC_SUPABASE_URL!, REQUIRED_ENV.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (list) => {

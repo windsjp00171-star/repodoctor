@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### 修正
+- 部署時漏設 Supabase 環境變數，網站改成用中文說明少了哪一個，不再只顯示 MIDDLEWARE_INVOCATION_FAILED
+
 ### 變更
 - 網站從「讀本機資料夾」改成「讀 GitHub repo」；本機版的專案列表與 API 已移除（命令列工具照常可用）
 ### 新增
