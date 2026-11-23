@@ -79,4 +79,29 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── 002：叫醒 worker ──
+-- 沒放 token：照樣能發起健檢，不送任何請求
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+insert into public.scans (repo_id) values ('20000000-0000-0000-0000-00000000000a');
+reset role;
+do $$ begin
+  if (select count(*) from net.calls) <> 0 then raise exception 'no token: must not call GitHub'; end if;
+end $$;
+-- 放了 token：發起健檢、新增安裝都會叫一次，而且 token 只出現在 header
+insert into vault.decrypted_secrets values ('github_dispatch_token', 'tok_test');
+set role authenticated;
+insert into public.scans (repo_id) values ('20000000-0000-0000-0000-00000000000a');
+insert into public.installations (github_installation_id) values (444);
+reset role;
+do $$ begin
+  if (select count(*) from net.calls) <> 2 then raise exception 'expected 2 dispatch calls, got %', (select count(*) from net.calls); end if;
+  if exists (select 1 from net.calls where url not like '%/actions/workflows/worker.yml/dispatches') then raise exception 'wrong url'; end if;
+  if exists (select 1 from net.calls where body::text like '%tok_test%') then raise exception 'token leaked into body'; end if;
+end $$;
+-- 使用者不能自己呼叫叫醒函式
+set role authenticated;
+select pg_temp.expect_fail($$select public.kick_worker()$$, 'call kick_worker directly');
+reset role;
+
 select 'ALL RLS TESTS PASSED';

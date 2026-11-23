@@ -8,12 +8,12 @@
 Vibe coder 的程式健檢醫生：讀一個專案，用中文白話說出哪裡有問題，並產生可以直接貼給
 Claude Code 的修復指令。**只讀不寫**——不改使用者的程式、不開 PR。
 
-目前階段：**Phase 1（讓別人也能用）**，程式寫好、還沒部署。上線步驟見 [`docs/SETUP.md`](docs/SETUP.md)。
+目前階段：**Phase 1（讓別人也能用）**。網站已部署：https://repodoctor-psi.vercel.app （Vercel）；Supabase 專案 `aikcewsgyetqqjbwdxbo`（東京）；GitHub App `repodoctortw`。上線步驟見 [`docs/SETUP.md`](docs/SETUP.md)。
 
 | 部分 | 在哪裡 | 做什麼 |
 |---|---|---|
 | 健檢引擎 | `worker/scanner/`、`worker/cli.py` | 給一個資料夾，吐一份報告 |
-| 雲端 worker | `worker/runner.py`、`worker/github_app.py` | 從 Supabase 拿待辦 → 驗證 GitHub 安裝 → 唯讀淺層 clone → 健檢 → 寫回 → 刪掉程式碼 |
+| 雲端 worker | `worker/runner.py`、`worker/github_app.py` | 從 Supabase 拿待辦 → 驗證 GitHub 安裝 → 唯讀淺層 clone → 健檢 → 寫回 → 刪掉程式碼。目前用 GitHub Actions 免費跑（`.github/workflows/worker.yml`，由 `supabase/migrations/002` 的 trigger 叫醒）；之後可改 Render 常駐，見 SETUP 5B |
 | 網站 | `web/`（Next.js） | GitHub 登入、安裝 App、選 repo、Realtime 看進度、報告 |
 | 資料庫 | `supabase/migrations/` | SPEC 五張表，全部開 RLS |
 

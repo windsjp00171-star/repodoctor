@@ -72,24 +72,77 @@
 
 ★ Vercel 免費方案只限非商業用途，開始收費時要升級（SPEC 有寫）。
 
-## 5. 部署 worker（Render）
+## 5. 健檢主機（worker）
 
-1. https://render.com → New → **Background Worker** → 選 `repodoctor` repo
-2. Root Directory：`worker`
-3. Build Command：`pip install -e ".[worker]"`
-4. Start Command：`python runner.py`
-5. Environment Variables：
+健檢主機負責：確認 GitHub 安裝是本人的、下載 repo、跑健檢、寫回結果。有兩種跑法，**程式一樣**：
 
-   | 名稱 | 值 |
+| | 5A. GitHub Actions（**目前用這個**） | 5B. Render（之後要正式給別人用再開） |
+|---|---|---|
+| 費用 | 0（私人 repo 每月 2,000 分鐘免費額度內） | ★ 約 US$7／月（Background Worker 沒有免費方案） |
+| 按下健檢到開始 | 約 1 分鐘（要開機） | 幾秒 |
+| 適合 | 自己測、少量測試 | 給測試者用 |
+
+### 5A. GitHub Actions（免費版，目前用這個）
+
+1. **放 secrets**：GitHub → `repodoctor` repo → Settings → Secrets and variables → **Actions** → New repository secret，加這四個：
+
+   | Name | 值 |
    |---|---|
-   | `SUPABASE_URL` | 步驟 1 |
-   | `SUPABASE_SECRET_KEY` | 步驟 1 的 secret key |
-   | `GITHUB_APP_ID` | 步驟 3 |
-   | `GITHUB_APP_PRIVATE_KEY` | 步驟 3 的 .pem 內容（整段貼上） |
-   | `ANTHROPIC_API_KEY` | 要開 AI 分析才填 |
-   | `PYTHON_VERSION` | `3.12.7` |
+   | `SUPABASE_URL` | `https://aikcewsgyetqqjbwdxbo.supabase.co` |
+   | `SUPABASE_SECRET_KEY` | Supabase API Keys 頁的 secret key（`sb_secret_...`） |
+   | `APP_ID` | `5881656` |
+   | `APP_PRIVATE_KEY` | 用記事本打開下載的 `.pem`，整段貼上（含 BEGIN／END 那兩行） |
 
-★ Render 的 Background Worker 沒有免費方案（最便宜一個月約 US$7）。Railway 也類似。
+   （GitHub 不准 secret 名稱用 `GITHUB_` 開頭，所以叫 `APP_ID`／`APP_PRIVATE_KEY`）
+2. **做一把「叫醒用」的 token**：GitHub → 頭像 → Settings → Developer settings → Personal access tokens →
+   **Fine-grained tokens** → Generate new token
+   - Token name：`repodoctor-kick`
+   - Expiration：1 年（到期前要換新的，不然健檢會變成要等 3 小時）
+   - Repository access：**Only select repositories** → 只選 `repodoctor`
+   - Permissions → Repository permissions → **Actions：Read and write**（其他全部不給）
+   - Generate，複製 token（只顯示一次）
+3. **把 token 放進 Supabase**：Supabase → SQL Editor，貼這一行（把 `<token>` 換成剛複製的），Run：
+   ```sql
+   select vault.create_secret('<token>', 'github_dispatch_token');
+   ```
+   （存在 Supabase 的保險箱 Vault 裡，不會出現在程式碼或網站上）
+4. **加叫醒鈴**：Supabase → SQL Editor，貼上 `supabase/migrations/002_kick_worker.sql` 全部內容，Run。
+5. **試跑一次**：GitHub → `repodoctor` → **Actions** → 左邊 `worker` → **Run workflow**。
+   跑完是綠勾就代表連得上 Supabase 和 GitHub App。
+
+之後有人按「開始健檢」或裝好 App，Supabase 會自動叫醒它；另外每 3 小時自動跑一次當保險。
+
+### 5B. Render（之後要付費時照這個做）
+
+1. https://render.com → 用 **Google** 登入（你的 Render 帳號是用 Google 註冊的）
+2. New + → **Background Worker** → 選 `repodoctor` repo
+3. 設定：
+   - Name：`repodoctor-worker`
+   - Region：**Singapore**（離 Supabase 東京機房最近）
+   - Branch：`main`
+   - Root Directory：`worker`
+   - Runtime：Python 3
+   - Build Command：`pip install -e ".[worker]"`
+   - Start Command：`python runner.py`
+   - Instance Type：Starter
+4. Environment Variables：
+
+   | Key | Value |
+   |---|---|
+   | `SUPABASE_URL` | `https://aikcewsgyetqqjbwdxbo.supabase.co` |
+   | `SUPABASE_SECRET_KEY` | Supabase 的 secret key（`sb_secret_...`） |
+   | `GITHUB_APP_ID` | `5881656` |
+   | `GITHUB_APP_PRIVATE_KEY_PATH` | `/etc/secrets/github-app.pem` |
+   | `PYTHON_VERSION` | `3.12.7` |
+   | `ANTHROPIC_API_KEY` | 要開 AI 分析才填 |
+
+5. **Secret Files** → Add：Filename `github-app.pem`，內容貼上整個 `.pem`（含 BEGIN／END）
+6. Deploy，到 Logs 確認沒有紅字
+7. **關掉 5A**：GitHub → `repodoctor` → Actions → `worker` → 右上「⋯」→ **Disable workflow**
+   （兩邊同時開也不會出錯，資料庫保證同一筆健檢只會被搶一次，只是浪費 Actions 分鐘數）
+
+★ 不要改用 Render 的**免費 Web Service** 代替：免費方案一個帳號每月共 750 小時，
+現有的教會系統 24 小時在線就差不多用完，兩個一起跑可能連教會系統一起被停。
 
 ## 6. 試一次
 
@@ -97,7 +150,7 @@
 2. 回到網站，等幾秒重新整理 → 會看到那個 repo
 3. 按「開始健檢」→ 看掃描進度 → 看報告
 
-卡住的話，看 Render 上 worker 的 Logs，把錯誤訊息貼給 Claude。
+卡住的話，看 GitHub → Actions → worker 最近一次的紀錄（用 Render 的話看 Render 的 Logs），把錯誤訊息貼給 Claude。
 
 ---
 
