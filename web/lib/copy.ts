@@ -11,6 +11,37 @@ export const copy = {
     ctaNote: "用 GitHub 帳號登入，三步驟完成，不用安裝任何東西。",
     dashboard: "到我的專案",
     securityLink: "我們怎麼保護你的程式碼 →",
+    demo: "先看範例報告（不用登入）",
+    coverageTitle: "檢查什麼、支援什麼",
+    coverage: [
+      {
+        title: "規則掃描（免費，不送 AI）",
+        items: [
+          "金鑰外洩：OpenAI、Anthropic、Groq、Google、GitHub、AWS、Stripe、Slack、Supabase secret key、私鑰，以及變數名像金鑰的值",
+          ".env 被 commit 進 git、.gitignore 沒擋 .env",
+          "Supabase：資料表沒開 RLS、service role key 出現在前端",
+          "資料庫連線散落在多個檔案、登入檢查寫了好幾份",
+          "專案衛生：沒有 README、超長檔案、巨大檔案、備份檔",
+        ],
+      },
+      {
+        title: "AI 分析（你勾選才會跑）",
+        items: [
+          "登入與權限：哪些頁面或 API 沒登入也能進",
+          "重複程式：同一件事寫了好幾份",
+          "規範落差：CLAUDE.md / AGENTS.md 寫的規則，程式有沒有照做",
+        ],
+      },
+      {
+        title: "支援的技術",
+        items: [
+          "語言：Python、JavaScript、TypeScript（含 .jsx / .tsx / .vue / .svelte），SQL migration",
+          "框架：Next.js（App Router、pages/api、middleware）、Flask、Django、Express、Vercel serverless",
+          "資料庫：Supabase（其他資料庫目前只檢查金鑰和連線散落）",
+          "只支援 GitHub 上的 repo，個人帳號；組織帳號之後支援",
+        ],
+      },
+    ],
     privacyTitle: "你的程式碼怎麼處理",
     privacy: [
       "只要唯讀權限，而且只看你勾選的 repo。我們不能改你的程式，也不會開 PR。",
@@ -141,11 +172,20 @@ export const copy = {
         ],
       },
       {
-        title: "AI 分析（你勾選才會用）",
+        title: "資料流向：哪些只在健檢主機上跑、哪些會送給 AI",
         items: [
-          "只送挑出來的片段（例如路由的開頭幾行），不送整個專案。",
+          "規則掃描（金鑰、資料表權限、專案衛生、連線散落）全部在我們的臨時健檢主機上跑，程式碼不會送去任何第三方。沒勾 AI 分析，就只有這一段。",
+          "勾了 AI 分析，才會把挑出來的片段送給 Anthropic Claude API：路由與登入檢查的開頭幾行、疑似重複的函式、CLAUDE.md 規範內容。不送整個專案。",
           "送出前，所有疑似金鑰的字串都會被遮掉，連前 4 碼都不留；送出前還會再檢查一次，發現漏網的就整個中止。",
           "放金鑰的檔案（例如 .env）完全不送。",
+          "想完全在自己電腦上跑也可以：健檢引擎是開源的，下載後執行 python -m cli 你的資料夾 --no-ai，什麼都不會送出去。",
+        ],
+      },
+      {
+        title: "可以只授權一個 repo",
+        items: [
+          "安裝 GitHub App 時選「Only select repositories」，只勾你想健檢的那一個；其他 repo 我們完全看不到。",
+          "之後隨時可以在「我的專案」按「新增或調整可以健檢的 repo」加減。",
         ],
       },
       {
@@ -163,6 +203,11 @@ export const copy = {
       "這是測試中的服務，如果你的專案有非常敏感的內容，建議先用一個不重要的專案試試看。",
     ],
     back: "← 回首頁",
+  },
+  demo: {
+    badge: "範例報告",
+    note: "這是用虛構專案做的示範，內容和登入後拿到的報告一模一樣。複製按鈕都可以按。",
+    cta: "健檢我自己的專案",
   },
   projects: {
     lastScan: "上次健檢",

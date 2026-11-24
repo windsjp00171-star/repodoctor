@@ -21,10 +21,14 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         <h1 className="max-w-3xl text-4xl font-bold leading-tight text-balance">{copy.landing.headline}</h1>
         <p className="max-w-2xl text-lg text-muted">{copy.landing.sub}</p>
         <div className="flex flex-col gap-2">
-          <div>
+          <div className="flex flex-wrap gap-3">
             <Link href={user ? "/dashboard" : "/login"}
               className="inline-block rounded-md bg-primary px-6 py-3 text-lg font-semibold text-bg transition hover:brightness-110">
               {user ? copy.landing.dashboard : copy.landing.cta}
+            </Link>
+            <Link href="/demo"
+              className="inline-block rounded-md border border-primary px-6 py-3 text-lg font-semibold text-primary transition hover:bg-primary/10">
+              {copy.landing.demo}
             </Link>
           </div>
           {!user && <p className="text-sm text-muted">{copy.landing.ctaNote}</p>}
@@ -41,6 +45,21 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             </li>
           ))}
         </ol>
+      </section>
+      <section className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold text-balance">{copy.landing.coverageTitle}</h2>
+        <div className="grid gap-3 md:grid-cols-3">
+          {copy.landing.coverage.map((c) => (
+            <div key={c.title} className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4">
+              <h3 className="font-semibold">{c.title}</h3>
+              <ul className="flex flex-col gap-1.5 text-sm leading-relaxed text-muted">
+                {c.items.map((it) => (
+                  <li key={it} className="flex gap-2"><span aria-hidden className="text-primary">·</span>{it}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </section>
       <section className="rounded-card border border-border bg-surface p-6">
         <h2 className="mb-3 text-lg font-bold">{copy.landing.privacyTitle}</h2>
