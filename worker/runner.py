@@ -52,22 +52,39 @@ def verify_installation(row: dict):
                 "note": "這個 GitHub App 安裝不屬於你的 GitHub 帳號（目前只支援個人帳號，組織帳號之後再支援）",
             }).eq("id", row["id"]).execute()
             return
-        repos = github_app.list_repos(row["github_installation_id"])
         supabase.table("installations").update({"status": "active", "account_login": info["account_login"], "note": None}) \
             .eq("id", row["id"]).execute()
-        if repos:
-            supabase.table("repos").upsert(
-                [{**r, "user_id": row["user_id"], "installation_id": row["id"]} for r in repos],
-                on_conflict="installation_id,github_repo_id",
-            ).execute()
+        sync_repos(row)
     except github_app.GitHubError as e:
         supabase.table("installations").update({"status": "rejected", "note": str(e)}).eq("id", row["id"]).execute()
+
+
+def sync_repos(row: dict):
+    """把 GitHub 上「這個安裝可以讀的 repo」寫進 repos。只新增／更新，不刪：
+    GitHub 偶爾回錯或回空的時候，不可以把使用者的健檢紀錄一起刪掉。"""
+    repos = github_app.list_repos(row["github_installation_id"])
+    if repos:
+        supabase.table("repos").upsert(
+            [{**r, "user_id": row["user_id"], "installation_id": row["id"]} for r in repos],
+            on_conflict="installation_id,github_repo_id",
+        ).execute()
 
 
 def process_installations():
     rows = supabase.table("installations").select("*").eq("status", "pending").limit(20).execute().data
     for row in rows:
         verify_installation(row)
+
+
+def sync_active_installations():
+    """使用者之後到 GitHub 加了 repo，安裝已經存在，不會再走 verify_installation。
+    所以每次執行都重拉一次（一個安裝一次 API 呼叫）。"""
+    rows = supabase.table("installations").select("*").eq("status", "active").execute().data
+    for row in rows:
+        try:
+            sync_repos(row)
+        except github_app.GitHubError:
+            log.exception("sync repos for installation %s failed", row["id"])
 
 
 # ── 2. 跑健檢 ──────────────────────────────────────────────
@@ -157,8 +174,8 @@ def process_deletion_requests():
 
 def tick() -> bool:
     """處理一輪。回傳這一輪有沒有做事。"""
-    # 隱私的兩件事失敗（例如 migration 003 還沒跑）不可以連累健檢本身
-    for job in (process_deletion_requests, purge_expired):
+    # 這幾件附帶的事失敗（例如 migration 還沒跑、GitHub 抖一下）不可以連累健檢本身
+    for job in (process_deletion_requests, purge_expired, sync_active_installations):
         try:
             job()
         except Exception:

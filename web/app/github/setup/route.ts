@@ -9,8 +9,10 @@ export async function GET(request: Request) {
   const id = Number(url.searchParams.get("installation_id"));
   if (Number.isSafeInteger(id) && id > 0) {
     const supabase = await createClient();
-    // 重複安裝（同一個 id）會撞 unique，忽略即可
-    await supabase.from("installations").insert({ github_installation_id: id });
+    // 第一次裝：新增一筆（pending）。已經裝過、這次是回來調整 repo：撞 unique，改成要求 worker 重拉清單。
+    const { error } = await supabase.from("installations").insert({ github_installation_id: id });
+    if (error) await supabase.from("installations").update({ sync_requested_at: new Date().toISOString() })
+      .eq("github_installation_id", id);
   }
   return NextResponse.redirect(new URL("/dashboard", url.origin));
 }
