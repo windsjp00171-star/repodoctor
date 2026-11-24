@@ -220,6 +220,23 @@ export const copy = {
   },
 };
 
-export const allCriticalPrompt = (project: string, prompts: string[]) =>
-  `以下是 RepoDoctor 對 ${project} 找到的 ${prompts.length} 個緊急問題。請一個一個處理，每處理完一個先停下來讓我確認，再做下一個。\n\n` +
+/** 貼給 AI 的修復指令前面加上這次健檢的分數，讓它知道整體狀況、先修哪一類（沒檢查的類別不列，不要讓它以為是 0 分）。 */
+export function scoreContext(r: { project: string; score: number | null; category_scores: Record<string, number | null>;
+  summary: Record<string, number> }): string {
+  const cats = Object.entries(copy.categories)
+    .filter(([k]) => r.category_scores[k] != null)
+    .map(([k, label]) => `${label} ${r.category_scores[k]}`);
+  const sev = ["critical", "high", "medium", "low"].map((k) => `${copy.severities[k]} ${r.summary[k] ?? 0}`).join("・");
+  return [
+    `【RepoDoctor 健檢背景】${r.project}`,
+    `總分 ${r.score ?? "—"} / 100（${sev}）`,
+    cats.length ? `各類別分數：${cats.join("、")}` : null,
+    "分數越低的類別越需要優先處理；修完後我會重新健檢，看分數有沒有進步。",
+  ].filter(Boolean).join("\n");
+}
+
+export const withScore = (context: string, prompt: string) => `${context}\n\n── 這次要修的問題 ──\n${prompt}`;
+
+export const allCriticalPrompt = (context: string, prompts: string[]) =>
+  `${context}\n\n以下是 ${prompts.length} 個緊急問題。請一個一個處理，每處理完一個先停下來讓我確認，再做下一個。\n\n` +
   prompts.map((p, i) => `── 第 ${i + 1} 個 ──\n${p}`).join("\n\n");
