@@ -72,7 +72,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
       {hasActive && <RepoList repos={repos} aiEnabled={process.env.NEXT_PUBLIC_AI_ENABLED === "true"} />}
       {hasActive && repos.length === 0 && <p className="text-muted">{d.noRepos}</p>}
-      {hasActive && <a href={installUrl(githubId)} className="text-sm text-primary">{d.manage} →</a>}
+      {hasActive && (
+        <a href={installUrl(githubId)}
+          className="inline-flex items-center gap-2 self-start rounded-md border border-primary px-4 py-2.5 font-semibold text-primary transition hover:bg-primary/10">
+          <span aria-hidden className="text-lg leading-none">＋</span>{d.manage}
+        </a>
+      )}
 
       {(installs ?? []).length > 0 && <DeleteMyData />}
     </>
