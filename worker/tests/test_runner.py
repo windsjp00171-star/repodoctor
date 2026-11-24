@@ -210,3 +210,31 @@ def test_one_broken_installation_does_not_stop_sync(monkeypatch):
     monkeypatch.setattr(github_app, "list_repos", list_repos)
     runner.sync_active_installations()
     assert len(upserts) == 1 and upserts[0][0]["installation_id"] == "ok"
+
+
+def test_sync_records_time_and_survives_missing_column(monkeypatch):
+    """同步完要記 repos_synced_at；那一欄還不存在（migration 005 沒跑）時，同步本身照樣成功。"""
+    calls = []
+
+    class Q(FakeQuery):
+        def __init__(self, name):
+            super().__init__([])
+            self.name = name
+
+        def upsert(self, payload, **kw):
+            calls.append(("upsert", self.name))
+            return self
+
+        def update(self, payload):
+            if "repos_synced_at" in payload:
+                raise RuntimeError("column repos_synced_at does not exist")
+            return self
+
+    class DB:
+        def table(self, name):
+            return Q(name)
+    monkeypatch.setattr(runner, "supabase", DB())
+    monkeypatch.setattr(github_app, "list_repos", lambda i: [
+        {"github_repo_id": 1, "full_name": "me/a", "default_branch": "main", "language": None}])
+    runner.sync_repos(ROW)
+    assert calls == [("upsert", "repos")]
