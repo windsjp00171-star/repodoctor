@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { allCriticalPrompt, copy } from "@/lib/copy";
+import { allCriticalPrompt, copy, scoreContext } from "@/lib/copy";
 import type { Previous } from "@/lib/improve";
 import type { Report } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
@@ -38,6 +38,7 @@ export function ReportView({ report, previous, onRescan, expired = false }: {
   }
 
   const critical = report.findings.filter((f) => f.severity === "critical");
+  const context = scoreContext(report);
   const cost = report.cost;
   const covStatus = (k: string) => report.coverage[k]?.status;
 
@@ -100,14 +101,14 @@ export function ReportView({ report, previous, onRescan, expired = false }: {
       {critical.length > 1 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-critical/60 bg-surface p-4">
           <p className="text-sm">有 {critical.length} 個緊急問題。可以一次複製全部，貼給 Claude Code 一個一個修。</p>
-          <CopyButton text={allCriticalPrompt(report.project, critical.map((f) => f.fix_prompt))} label={copy.report.allCritical} />
+          <CopyButton text={allCriticalPrompt(context, critical.map((f) => f.fix_prompt))} label={copy.report.allCritical} />
         </div>
       )}
 
       <div className="flex flex-col gap-3">
         {report.findings.length === 0 && !expired && <p className="text-muted">{copy.report.noFindings}</p>}
         {report.findings.map((f, i) => (
-          <FindingCard key={f.fingerprint + i} f={f} advanced={advanced} open={i === 0} />
+          <FindingCard key={f.fingerprint + i} f={f} advanced={advanced} open={i === 0} context={context} />
         ))}
       </div>
 

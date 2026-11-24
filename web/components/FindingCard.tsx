@@ -1,5 +1,5 @@
 "use client";
-import { copy } from "@/lib/copy";
+import { copy, withScore } from "@/lib/copy";
 import type { Finding } from "@/lib/types";
 import { CopyButton } from "./CopyButton";
 
@@ -27,7 +27,7 @@ function Inline({ text }: { text: string }) {
   );
 }
 
-export function FindingCard({ f, advanced, open }: { f: Finding; advanced: boolean; open?: boolean }) {
+export function FindingCard({ f, advanced, open, context }: { f: Finding; advanced: boolean; open?: boolean; context?: string }) {
   const loc = f.file_path ? `${f.file_path}${f.line ? `：第 ${f.line} 行` : ""}` : null;
   return (
     <details open={open}
@@ -53,7 +53,7 @@ export function FindingCard({ f, advanced, open }: { f: Finding; advanced: boole
         <div className="rounded-md border border-border bg-bg">
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs text-muted">
             <span>{copy.report.fix}</span>
-            <CopyButton text={f.fix_prompt} />
+            <CopyButton text={context ? withScore(context, f.fix_prompt) : f.fix_prompt} />
           </div>
           <pre className="whitespace-pre-wrap break-words p-3 font-sans text-sm leading-relaxed">{f.fix_prompt}</pre>
         </div>

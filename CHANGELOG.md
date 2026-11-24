@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 變更
+- 複製給 Claude Code 的修復指令（單一問題與「一次複製全部緊急問題」）前面加上健檢背景：總分、各嚴重度數量、各類別分數，讓 AI 知道整體狀況與優先順序
 ### 修正
 - 第一次安裝之後再到 GitHub 加 repo，「我的專案」看不到新加的：現在從 GitHub 回來時會叫醒 worker 重拉清單，worker 每次執行也會同步一次（資料庫 migration 004）
 ### 變更
