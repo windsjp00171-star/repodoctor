@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 修正
+- 第一次安裝之後再到 GitHub 加 repo，「我的專案」看不到新加的：現在從 GitHub 回來時會叫醒 worker 重拉清單，worker 每次執行也會同步一次（資料庫 migration 004）
 ### 變更
 - 準備開源：採用 AGPL-3.0（`LICENSE`），網站頁尾加上原始碼連結；改寫 README；規格書（含定價）移出這個 repo；文件拿掉維護者個人姓名
 ### 新增

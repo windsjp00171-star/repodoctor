@@ -165,4 +165,28 @@ do $$ begin
   if (select count(*) from net.calls) <> 1 then raise exception 'delete request should kick worker once, got %', (select count(*) from net.calls); end if;
 end $$;
 
+-- ── 004：要求重新同步 repo 清單 ──
+-- 只能要求自己的；要求時會叫醒 worker；不能藉機改狀態
+reset role;
+insert into public.installations (user_id, github_installation_id, status) values
+  ('00000000-0000-0000-0000-00000000000a', 9001, 'active');
+truncate net.calls;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+update public.installations set sync_requested_at = now() where github_installation_id = 9001;
+select pg_temp.expect_fail($$update public.installations set status = 'active'$$, 'user sets installation status');
+reset role;
+do $$ begin
+  if (select sync_requested_at from public.installations where github_installation_id = 9001) is not null then raise exception 'B requested sync on A installation'; end if;
+  if (select count(*) from net.calls) <> 0 then raise exception 'foreign sync request must not kick worker'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+update public.installations set sync_requested_at = now() where github_installation_id = 9001;
+reset role;
+do $$ begin
+  if (select sync_requested_at from public.installations where github_installation_id = 9001) is null then raise exception 'A own sync request not saved'; end if;
+  if (select count(*) from net.calls) <> 1 then raise exception 'sync request should kick worker once'; end if;
+end $$;
+
 select 'ALL RLS TESTS PASSED';

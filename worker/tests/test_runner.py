@@ -157,6 +157,7 @@ def test_privacy_jobs_failing_does_not_stop_scans(monkeypatch):
         raise RuntimeError("column delete_requested_at does not exist")
     monkeypatch.setattr(runner, "process_deletion_requests", boom)
     monkeypatch.setattr(runner, "purge_expired", boom)
+    monkeypatch.setattr(runner, "sync_active_installations", boom)
     monkeypatch.setattr(runner, "process_installations", lambda: None)
     scanned = []
     monkeypatch.setattr(runner, "process_scan", scanned.append)
@@ -166,3 +167,46 @@ def test_privacy_jobs_failing_does_not_stop_scans(monkeypatch):
             return FakeQuery([{"id": "s1"}])
     monkeypatch.setattr(runner, "supabase", DB())
     assert runner.tick() is True and scanned == [{"id": "s1"}]
+
+
+def test_repos_added_later_are_synced(monkeypatch):
+    """第一次安裝後再到 GitHub 加 repo：已經 active 的安裝也要重拉清單。"""
+    upserts = []
+
+    class Q(FakeQuery):
+        def upsert(self, payload, **kw):
+            upserts.append(payload)
+            return self
+
+    class DB:
+        def table(self, name):
+            return Q([ROW | {"status": "active"}])
+    monkeypatch.setattr(runner, "supabase", DB())
+    monkeypatch.setattr(github_app, "list_repos", lambda i: [
+        {"github_repo_id": 1, "full_name": "me/old", "default_branch": "main", "language": None},
+        {"github_repo_id": 2, "full_name": "me/new", "default_branch": "main", "language": None}])
+    runner.sync_active_installations()
+    assert [r["full_name"] for r in upserts[0]] == ["me/old", "me/new"]
+    assert all(r["installation_id"] == "inst-1" and r["user_id"] == "user-1" for r in upserts[0])
+
+
+def test_one_broken_installation_does_not_stop_sync(monkeypatch):
+    upserts = []
+
+    class Q(FakeQuery):
+        def upsert(self, payload, **kw):
+            upserts.append(payload)
+            return self
+
+    class DB:
+        def table(self, name):
+            return Q([ROW | {"id": "bad", "github_installation_id": 1}, ROW | {"id": "ok", "github_installation_id": 2}])
+
+    def list_repos(i):
+        if i == 1:
+            raise github_app.GitHubError("uninstalled")
+        return [{"github_repo_id": 3, "full_name": "me/x", "default_branch": "main", "language": None}]
+    monkeypatch.setattr(runner, "supabase", DB())
+    monkeypatch.setattr(github_app, "list_repos", list_repos)
+    runner.sync_active_installations()
+    assert len(upserts) == 1 and upserts[0][0]["installation_id"] == "ok"

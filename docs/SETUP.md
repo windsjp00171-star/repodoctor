@@ -108,6 +108,7 @@
    （存在 Supabase 的保險箱 Vault 裡，不會出現在程式碼或網站上）
 4. **加叫醒鈴**：Supabase → SQL Editor，貼上 `supabase/migrations/002_kick_worker.sql` 全部內容，Run。
    接著再貼 `supabase/migrations/003_retention_and_account_deletion.sql`，Run（報告 90 天到期刪細節、「刪除我的所有資料」連帳號一起刪，都靠這一份）。
+   再貼 `supabase/migrations/004_repo_sync.sql`，Run（之後到 GitHub 加 repo，「我的專案」才會跟著更新）。
 5. **試跑一次**：GitHub → `repodoctor` → **Actions** → 左邊 `worker` → **Run workflow**。
    跑完是綠勾就代表連得上 Supabase 和 GitHub App。
 
