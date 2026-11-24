@@ -127,6 +127,7 @@ export const copy = {
     installSecurity: "為什麼這樣是安全的？",
     manage: "新增或調整可以健檢的 repo",
     pending: "正在跟 GitHub 確認……這一頁會自己更新，通常一兩分鐘。",
+    syncing: "正在從 GitHub 更新可以健檢的 repo……這一頁會自己更新，通常一兩分鐘（健檢主機需要一點時間啟動）。",
     rejected: "這個安裝沒有通過確認：",
     noRepos: "還沒有可以健檢的 repo。安裝 App 時記得勾選 repo。",
     queued: "排隊中",

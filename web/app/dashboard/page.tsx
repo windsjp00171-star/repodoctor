@@ -26,7 +26,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const githubId = (gh?.identity_data?.provider_id as string | undefined) ?? gh?.id ?? null;
 
   const [{ data: installs }, { data: repoRows }] = await Promise.all([
-    supabase.from("installations").select("id, status, account_login, note").order("created_at"),
+    // select("*")：migration 005 還沒跑時少一欄也不會讓整頁讀不到
+    supabase.from("installations").select("*").order("created_at"),
     supabase.from("repos")
       .select("id, full_name, language, last_scan:scans!repos_last_scan_fk(id, status, score, summary, created_at)")
       .order("full_name"),
@@ -35,6 +36,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const pending = (installs ?? []).filter((i) => i.status === "pending");
   const rejected = (installs ?? []).filter((i) => i.status === "rejected");
   const hasActive = (installs ?? []).some((i) => i.status === "active");
+  // 從 GitHub 調整完 repo 回來：worker 還沒同步完就顯示提示並自動更新（最多等 10 分鐘，避免永遠轉圈）
+  const syncing = (installs ?? []).some((i) => i.status === "active" && i.sync_requested_at
+    && Date.now() - new Date(i.sync_requested_at).getTime() < 600_000
+    && (!i.repos_synced_at || new Date(i.repos_synced_at) < new Date(i.sync_requested_at)));
   const d = copy.dashboard;
 
   return (
@@ -61,6 +66,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <p className="flex items-center gap-3 rounded-card border border-primary/50 bg-surface p-4 text-sm">
           <span aria-hidden className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
           {d.pending}
+          <AutoRefresh />
+        </p>
+      )}
+      {syncing && (
+        <p className="flex items-center gap-3 rounded-card border border-primary/50 bg-surface p-4 text-sm">
+          <span aria-hidden className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
+          {d.syncing}
           <AutoRefresh />
         </p>
       )}

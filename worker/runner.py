@@ -68,6 +68,10 @@ def sync_repos(row: dict):
             [{**r, "user_id": row["user_id"], "installation_id": row["id"]} for r in repos],
             on_conflict="installation_id,github_repo_id",
         ).execute()
+    try:  # 給網站判斷「同步好了沒」；migration 005 還沒跑時不可以讓安裝驗證失敗
+        supabase.table("installations").update({"repos_synced_at": _now()}).eq("id", row["id"]).execute()
+    except Exception:
+        log.warning("could not record repos_synced_at (migration 005 not applied?)")
 
 
 def process_installations():

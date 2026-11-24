@@ -189,4 +189,10 @@ do $$ begin
   if (select count(*) from net.calls) <> 1 then raise exception 'sync request should kick worker once'; end if;
 end $$;
 
+-- ── 005：同步完成時間只有 worker 能寫 ──
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+select pg_temp.expect_fail($$update public.installations set repos_synced_at = now() where github_installation_id = 9001$$, 'user sets repos_synced_at');
+reset role;
+
 select 'ALL RLS TESTS PASSED';
