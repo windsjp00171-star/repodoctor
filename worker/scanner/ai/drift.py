@@ -12,6 +12,7 @@ from __future__ import annotations
 import fnmatch
 import re
 
+import config
 from scanner.ai.client import AICheckError, AIClient
 from scanner.ai.common import FINDINGS_SCHEMA, WRITING_RULES, coverage, to_findings
 from scanner.files import Project
@@ -89,8 +90,10 @@ def run(proj: Project, ai: AIClient, masker: Masker) -> tuple[list, dict]:
     spec_name, spec = _spec_text(proj)
     if not spec:
         return [], {"status": "not_applicable", "note": "沒有 CLAUDE.md / AGENTS.md 之類的規範檔"}
-    truncated = len(spec) > MAX_SPEC_CHARS
-    spec_masked = masker.mask(spec[:MAX_SPEC_CHARS])
+    # 規範檔不能超過這一家單次能送的量（Groq 免費額度比較小），留 500 字給前後說明
+    spec_limit = min(MAX_SPEC_CHARS, config.max_input_chars("drift") - 500)
+    truncated = len(spec) > spec_limit
+    spec_masked = masker.mask(spec[:spec_limit])
 
     try:
         extracted = ai.ask("drift", EXTRACT_SYSTEM, f"規範檔 `{spec_name}`：\n\n{spec_masked}", EXTRACT_SCHEMA)
@@ -132,14 +135,25 @@ def run(proj: Project, ai: AIClient, masker: Masker) -> tuple[list, dict]:
 
     note = f"從 `{spec_name}` 抽出 {len(rules)} 條可驗證的規則，搜尋到 {n_hits} 處疑似違反"
     if truncated:
-        note += f"；規範檔超過 {MAX_SPEC_CHARS:,} 字，只讀了前面"
+        note += f"；規範檔超過 {spec_limit:,} 字，只讀了前面"
     if bad_patterns:
         note += f"；{bad_patterns} 條規則的搜尋式無效，略過"
     if not evidence_blocks:
         return [], coverage(1, [], len(rules), 0, {}, note)
 
+    # 證據太多時只送放得下的那幾條規範，並在報告裡寫出來（不可以默默少檢查）
+    limit, kept, size = config.max_input_chars("drift"), [], 0
+    for blk in evidence_blocks:
+        if size + len(blk) + 2 > limit:
+            break
+        kept.append(blk)
+        size += len(blk) + 2
+    if len(kept) < len(evidence_blocks):
+        note += f"；疑似違反的規範有 {len(evidence_blocks)} 條，單次送出有上限，只判斷了前 {len(kept)} 條"
+    if not kept:
+        return [], coverage(1, ["單一規範的證據就超過單次送出上限"], len(rules), 0, {}, note)
     try:
-        data = ai.ask("drift", JUDGE_SYSTEM, "\n\n".join(evidence_blocks), FINDINGS_SCHEMA)
+        data = ai.ask("drift", JUDGE_SYSTEM, "\n\n".join(kept), FINDINGS_SCHEMA)
     except AICheckError as e:
         return [], coverage(1, [str(e)], len(rules), 0, {}, note)
     findings, dropped = to_findings(data, "drift", "ai.drift", sent_files)

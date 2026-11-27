@@ -37,7 +37,7 @@ def run(groups: list[DupGroup], ai: AIClient, masker: Masker) -> tuple[list, dic
         # 一組裡有好幾個檔案，用 \0 串起來讓 pack 記住全部
         units.append(("\0".join(sorted({p for p, _, _ in g.sites})), "\n\n".join(parts)))
 
-    requests, skipped = pack([], units, config.MAX_INPUT_CHARS_PER_CALL, config.MAX_CALLS_PER_CHECK)
+    requests, skipped = pack([], units, config.max_input_chars("duplication"), config.MAX_CALLS_PER_CHECK)
     findings, dropped, errors, ok = [], {}, [], 0
     for body, sent in requests:
         sent_files = {p for s in sent for p in s.split("\0")}

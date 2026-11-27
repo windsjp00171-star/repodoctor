@@ -159,25 +159,36 @@
 
 ## 7. 開啟 AI 分析（登入與權限、重複、規範落差）
 
-程式已經接好，放好金鑰就會動。金鑰**只放在健檢主機那邊**（GitHub Actions secrets；改 Render 後放 Render），
-不會出現在網站上。
+兩家分工（`worker/config.py` 的 `AI_CHECKS`）：
 
-1. **申請金鑰**：https://console.anthropic.com → API Keys → Create Key（名字 `repodoctor`），複製 `sk-ant-...`
-2. **先設花費上限**（防止意外燒錢）：Console → Settings → **Limits** → 設每月上限，例如 US$10。
-   目前估一次健檢約 NT$1–7（路由多的專案貴一點），10 位測試者每人每天最多 10 次
-3. **放進 GitHub**：`repodoctor` repo → Settings → Secrets and variables → Actions → New repository secret
-   - Name：`ANTHROPIC_API_KEY`
-   - Secret：剛複製的 `sk-ant-...`
-4. **測試金鑰**：Actions → `worker` → Run workflow → 勾 **「只測試 Anthropic API 金鑰能不能用」** → Run。
-   點進去看「測試 AI 金鑰」那一步：
-   - 寫「AI 金鑰可以用」→ 成功（這次測試花費不到台幣 1 分錢，不送任何程式碼）
-   - 寫「AI 金鑰測試失敗：……」→ 照中文原因處理（金鑰貼錯、還沒儲值等）
-5. **網站打開 AI 選項**：Vercel → `repodoctor` → Settings → Environment Variables →
+| 檢查 | 用哪一家 | 金鑰 |
+|---|---|---|
+| 登入與權限 | Anthropic Claude Sonnet（要判斷力） | `ANTHROPIC_API_KEY` |
+| 重複程式、規範落差 | Groq 免費額度（openai/gpt-oss-120b） | `GROQ_API_KEY` |
+
+兩把可以只放一把：沒有金鑰的那一家負責的檢查會在報告上標「略過」並寫明缺哪一把，其他照常跑。
+金鑰**只放在健檢主機那邊**（GitHub Actions secrets；改 Render 後放 Render），不會出現在網站上。
+
+**Groq（免費，先做這個）**
+1. https://console.groq.com → API Keys → Create API Key（名字 `repodoctor`），複製 `gsk_...`
+2. `repodoctor` repo → Settings → Secrets and variables → Actions → New repository secret
+   - Name：`GROQ_API_KEY`　Secret：剛複製的 `gsk_...`
+3. 免費方案每分鐘額度很小（約 8,000 token），所以這兩項單次只送約 12,000 字；撞到上限時程式會自己等一下再試，
+   還是不行就在報告上寫「Groq 免費額度用完」，不會假裝沒問題
+
+**Anthropic（登入與權限）**
+1. https://console.anthropic.com → API Keys → Create Key（名字 `repodoctor`），複製 `sk-ant-...`
+2. **先設花費上限**（防止意外燒錢）：Console → Settings → **Limits** → 設每月上限，例如 US$10
+3. 放進 GitHub secrets，Name：`ANTHROPIC_API_KEY`
+
+**測試與開啟**
+1. **測試金鑰**：Actions → `worker` → Run workflow → 勾 **「只測試 AI 金鑰」** → Run。
+   「測試 AI 金鑰」那一步會一家一行寫「金鑰可以用」或中文的失敗原因（不送任何程式碼）
+2. **網站打開 AI 選項**：Vercel → `repodoctor` → Settings → Environment Variables →
    `NEXT_PUBLIC_AI_ENABLED` 改成 `true` → Deployments → Redeploy
-6. **試一次**：網站「我的專案」勾「加上 AI 分析」→ 開始健檢。
-   報告最下面會寫這次 AI 花了多少（美金與台幣），「登入與權限」「規範落差」也會有分數
+3. **試一次**：「我的專案」勾「加上 AI 分析」→ 開始健檢。報告最下面會寫這次 AI 花了多少（Groq 免費額度記 0）
 
-之後改用 Render：Render 的 Environment Variables 一樣加 `ANTHROPIC_API_KEY`（5B 的表格裡已經列了）。
+之後改用 Render：Render 的 Environment Variables 一樣加 `ANTHROPIC_API_KEY`、`GROQ_API_KEY`。
 
 ## 這一版的限制（之後再做）
 
