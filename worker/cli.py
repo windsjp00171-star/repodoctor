@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from scanner.ai import auth as ai_auth
 from scanner.ai import drift as ai_drift
 from scanner.ai import duplication as ai_dup
-from scanner.ai.client import AIClient
+from scanner.ai.client import AIClient, has_key, missing_key_note
 from scanner.files import load_project
 from scanner.findings import SEVERITIES
 from scanner.masking import Masker
@@ -90,17 +90,29 @@ def scan(path: str, use_ai: bool = True, dry_run: bool = False, progress_file: s
     ai = AIClient(masker, dry_run=dry_run)
 
     if use_ai or dry_run:
+        # 每一項各自看它那一家有沒有金鑰；沒有就標「略過」並寫明原因，不影響其他項目（dry-run 不呼叫 API，不需要金鑰）
+        ready = lambda check: dry_run or has_key(check)  # noqa: E731
         prog.emit(60, "AI 檢查登入與權限", found=len(findings))
-        fs, coverage["auth"] = ai_auth.run(proj, ai, masker)
-        findings += fs
+        if ready("auth"):
+            fs, coverage["auth"] = ai_auth.run(proj, ai, masker)
+            findings += fs
+        else:
+            coverage["auth"] = {"status": "skipped", "note": missing_key_note("auth")}
         prog.emit(80, "AI 判斷重複", found=len(findings))
-        fs, cov = ai_dup.run(dup_groups, ai, masker)
-        findings += fs
-        coverage["duplication"] = {"status": "done" if cov["status"] == "not_applicable" else cov["status"],
-                                   "note": f"規則找到 {len(dup_rule)} 個確定的重複；AI：{cov['note']}"}
+        if ready("duplication"):
+            fs, cov = ai_dup.run(dup_groups, ai, masker)
+            findings += fs
+            coverage["duplication"] = {"status": "done" if cov["status"] == "not_applicable" else cov["status"],
+                                       "note": f"規則找到 {len(dup_rule)} 個確定的重複；AI：{cov['note']}"}
+        else:
+            coverage["duplication"] = {"status": "partial",
+                                       "note": f"只跑了規則（找到 {len(dup_rule)} 個）；{missing_key_note('duplication')}"}
         prog.emit(90, "AI 比對規範", found=len(findings))
-        fs, coverage["drift"] = ai_drift.run(proj, ai, masker)
-        findings += fs
+        if ready("drift"):
+            fs, coverage["drift"] = ai_drift.run(proj, ai, masker)
+            findings += fs
+        else:
+            coverage["drift"] = {"status": "skipped", "note": missing_key_note("drift")}
     else:
         coverage["auth"] = {"status": "skipped", "note": "--no-ai"}
         coverage["duplication"] = {"status": "partial", "note": f"只跑了規則（找到 {len(dup_rule)} 個）；同名函式的 AI 判斷因 --no-ai 略過"}
@@ -134,9 +146,9 @@ def _summary(r: dict) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="repodoctor", description="RepoDoctor 健檢引擎：輸入本機資料夾，輸出 JSON 健檢報告")
     ap.add_argument("path", nargs="?", help="要健檢的專案資料夾")
-    ap.add_argument("--check-ai", action="store_true", help="只測試 ANTHROPIC_API_KEY 能不能用（不送任何程式碼，花費不到 1 分錢台幣）")
+    ap.add_argument("--check-ai", action="store_true", help="只測試 ANTHROPIC_API_KEY／GROQ_API_KEY 能不能用（不送任何程式碼，花費不到 1 分錢台幣）")
     ap.add_argument("-o", "--output", help="報告寫到這個檔案（預設印到標準輸出）")
-    ap.add_argument("--no-ai", action="store_true", help="只跑規則掃描，不呼叫 Claude API")
+    ap.add_argument("--no-ai", action="store_true", help="只跑規則掃描，不呼叫 AI API")
     ap.add_argument("--dry-run", action="store_true", help="列出會送給 AI 的內容（已遮罩）與預估 token，不呼叫 API")
     ap.add_argument("--progress-file", help="把進度一行一筆寫到這個檔案（給網站用）")
     ap.add_argument("-q", "--quiet", action="store_true", help="不印摘要")

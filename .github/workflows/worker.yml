@@ -8,7 +8,7 @@
 # 之後改用 Render 常駐（docs/SETUP.md「選項 B」）時，把這個檔案刪掉或停用即可，程式不用改。
 #
 # 需要的 repository secrets（Settings → Secrets and variables → Actions）：
-#   SUPABASE_URL、SUPABASE_SECRET_KEY、APP_ID、APP_PRIVATE_KEY、（選用）ANTHROPIC_API_KEY
+#   SUPABASE_URL、SUPABASE_SECRET_KEY、APP_ID、APP_PRIVATE_KEY、（選用）ANTHROPIC_API_KEY、GROQ_API_KEY
 #   ※ GitHub 不准 secret 名稱用 GITHUB_ 開頭，所以 App 的兩個叫 APP_ID／APP_PRIVATE_KEY
 name: worker
 
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       check_ai:
-        description: "只測試 Anthropic API 金鑰能不能用（不做健檢）"
+        description: "只測試 AI 金鑰（Anthropic／Groq）能不能用（不做健檢）"
         type: boolean
         default: false
   schedule:
@@ -50,6 +50,7 @@ jobs:
         run: python -m cli --check-ai
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       - name: 處理待辦的健檢
         if: ${{ !inputs.check_ai }}
         run: python runner.py --once
@@ -59,3 +60,4 @@ jobs:
           GITHUB_APP_ID: ${{ secrets.APP_ID }}
           GITHUB_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}

@@ -57,7 +57,7 @@ pytest
 ## Phase 0 自己的規則
 
 ### 金鑰
-- **金鑰完整值不可以寫進報告、log、測試輸出，也不可以送給 Claude API。**
+- **金鑰完整值不可以寫進報告、log、測試輸出，也不可以送給 AI API（Anthropic、Groq）。**
   報告只留「前 4 碼 + 檔案 + 行號」。
 - 遮罩只有一份實作：`scanner/masking.py`。不要在別的地方自己寫一份。
 - 報告和送 API 用**兩套標準**，刻意不同：
@@ -66,8 +66,8 @@ pytest
 - `.env` 這類檔案的內容**完全不送** API。
 - 送出前 `ai/client.py` 會再掃一次：送出的文字裡還找得到原本的金鑰就**中止**，不是警告。
 
-### 呼叫 Claude API
-- 只有 `scanner/ai/client.py` 可以呼叫 API。其他模組把片段交給它。
+### 呼叫 AI API（Anthropic、Groq）
+- 只有 `scanner/ai/client.py` 可以呼叫 API（兩家都是）。其他模組把片段交給它；每個檢查用哪一家寫在 `config.AI_CHECKS` 的 `provider`。
 - 只送規則掃描挑出的片段，**不送整個 repo**。
 - 模型、effort、價格、匯率、單次 token 上限都在 `config.py`，模組裡不准寫死。
 - 每次呼叫都要把 `usage` 記進報告的 `token_usage`（依檢查項目、模型分開），並換算美金與台幣。

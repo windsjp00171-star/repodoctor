@@ -48,7 +48,7 @@ export const privacy: { title: string; lede: string; sections: Section[] } = {
         "Supabase：資料庫與登入（日本東京）。",
         "Vercel：網站主機。",
         "GitHub：登入、讀取 repo、執行健檢（GitHub Actions）。",
-        "Anthropic（Claude API）：只有你勾選「AI 分析」時才會使用；只送出挑選過的程式片段，所有疑似金鑰會先遮罩。",
+        "Anthropic（Claude API）與 Groq：只有你勾選「AI 分析」時才會使用。「登入與權限」送 Anthropic，「重複程式」「規範落差」送 Groq；只送出挑選過的程式片段，所有疑似金鑰會先遮罩。",
         "我們不會把你的資料賣給或提供給其他第三方，也不使用廣告或追蹤分析工具。",
       ],
     },

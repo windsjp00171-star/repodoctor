@@ -120,7 +120,7 @@ def run(proj: Project, ai: AIClient, masker: Masker) -> tuple[list, dict]:
 
     context = [masker.mask(c) for c in context]
     units = [(p, masker.mask(t)) for p, t in units]
-    requests, skipped = pack(context, units, config.MAX_INPUT_CHARS_PER_CALL, config.MAX_CALLS_PER_CHECK)
+    requests, skipped = pack(context, units, config.max_input_chars("auth"), config.MAX_CALLS_PER_CHECK)
 
     ctx_text = "\n\n".join(context) or "（沒有找到 before_request / middleware / 權限 decorator）"
     findings, dropped, errors, ok = [], {"low_confidence": 0, "unknown_file": 0}, [], 0

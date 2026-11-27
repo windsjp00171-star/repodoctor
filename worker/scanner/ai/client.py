@@ -1,11 +1,14 @@
-"""唯一呼叫 Claude API 的地方。
+"""唯一呼叫 AI API 的地方（Anthropic Claude、Groq）。
 
-每次呼叫：送出前檢查遮罩 → 檢查預算 → 呼叫 → 記 usage 與成本。
+每次呼叫：送出前檢查遮罩 → 檢查預算 → 依 config.AI_CHECKS 的 provider 呼叫 → 記 usage 與成本。
+遮罩檢查與預算在分流之前，所以不管送哪一家，同一套保護都跑過。
 任何失敗都丟 AICheckError，呼叫端要記成「這一項沒有檢查完」，不可以當成「沒有問題」。
 """
 from __future__ import annotations
 
 import json
+import os
+import time
 from dataclasses import dataclass, field
 
 import config
@@ -20,7 +23,23 @@ class BudgetExceeded(AICheckError):
     pass
 
 
-def cost_usd(model: str, u: dict) -> float:
+def provider_of(check: str) -> str:
+    return config.AI_CHECKS[check].get("provider", "anthropic")
+
+
+def has_key(check: str) -> bool:
+    """這個檢查項目要用的那一家，有沒有設金鑰。"""
+    return bool(os.environ.get(config.AI_PROVIDERS[provider_of(check)]["env"]))
+
+
+def missing_key_note(check: str) -> str:
+    prov = config.AI_PROVIDERS[provider_of(check)]
+    return f"沒有設定 {prov['env']}（{prov['label']}），這一項沒有檢查"
+
+
+def cost_usd(model: str, u: dict, provider: str = "anthropic") -> float:
+    if provider in config.FREE_TIER_PROVIDERS:
+        return 0.0
     p = config.PRICES_USD_PER_MTOK.get(model) or config.PRICES_USD_PER_MTOK[config.AI_CHECKS["auth"]["model"]]
     return (u.get("input_tokens", 0) * p["input"]
             + u.get("output_tokens", 0) * p["output"]
@@ -79,8 +98,9 @@ class AIClient:
             self.masker.assert_clean(system + "\n" + user)
         except MaskingError as e:
             raise AICheckError(str(e)) from e
-        if len(user) > config.MAX_INPUT_CHARS_PER_CALL:
-            raise AICheckError(f"單次送出 {len(user):,} 字元，超過上限 {config.MAX_INPUT_CHARS_PER_CALL:,}")
+        limit = config.max_input_chars(check)
+        if len(user) > limit:
+            raise AICheckError(f"單次送出 {len(user):,} 字元，超過上限 {limit:,}")
 
         est_in = int((len(system) + len(user)) / config.CHARS_PER_TOKEN_ESTIMATE)
         if self.usage.total_tokens + est_in > config.MAX_TOKENS_PER_SCAN:
@@ -89,12 +109,18 @@ class AIClient:
         if self.dry_run:
             est_out = 1500
             u = {"input_tokens": est_in, "output_tokens": est_out}
-            self.usage.calls.append({"check": check, "model": cfg["model"], **u,
-                                     "cost_usd": round(cost_usd(cfg["model"], u), 6)})
-            self.payloads.append({"check": check, "model": cfg["model"], "chars": len(user),
+            prov = provider_of(check)
+            self.usage.calls.append({"check": check, "provider": prov, "model": cfg["model"], **u,
+                                     "cost_usd": round(cost_usd(cfg["model"], u, prov), 6)})
+            self.payloads.append({"check": check, "provider": prov, "model": cfg["model"], "chars": len(user),
                                   "est_input_tokens": est_in, "system": system, "user": user})
             return {"findings": [], "notes": "（dry-run：沒有呼叫 API）"}
 
+        if provider_of(check) == "groq":
+            return self._ask_groq(check, cfg, system, user, schema)
+        return self._ask_anthropic(check, cfg, system, user, schema)
+
+    def _ask_anthropic(self, check: str, cfg: dict, system: str, user: str, schema: dict) -> dict:
         import anthropic
         kwargs = dict(
             model=cfg["model"], max_tokens=cfg["max_tokens"], system=system,
@@ -121,7 +147,7 @@ class AIClient:
               "cache_creation_input_tokens": getattr(u, "cache_creation_input_tokens", 0) or 0,
               "cache_read_input_tokens": getattr(u, "cache_read_input_tokens", 0) or 0}
         served = resp.model or cfg["model"]
-        self.usage.calls.append({"check": check, "model": served, **ud,
+        self.usage.calls.append({"check": check, "provider": "anthropic", "model": served, **ud,
                                  "cost_usd": round(cost_usd(served, ud), 6),
                                  "stop_reason": resp.stop_reason, "request_id": getattr(resp, "_request_id", None)})
 
@@ -137,16 +163,93 @@ class AIClient:
         except json.JSONDecodeError as e:
             raise AICheckError("模型回傳的格式不正確") from e
 
+    def _ask_groq(self, check: str, cfg: dict, system: str, user: str, schema: dict) -> dict:
+        """Groq（OpenAI 相容格式）。免費方案每分鐘額度很小：撞到 429 就照 retry-after 等一下再試。"""
+        body = {
+            "model": cfg["model"],
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "max_completion_tokens": cfg["max_tokens"],
+            "reasoning_effort": cfg["effort"],
+            "response_format": {"type": "json_schema",
+                                "json_schema": {"name": f"repodoctor_{check}", "strict": True, "schema": schema}},
+        }
+        resp = _groq_post(body)
+        data = resp.json()
+        u = data.get("usage") or {}
+        ud = {"input_tokens": u.get("prompt_tokens", 0) or 0, "output_tokens": u.get("completion_tokens", 0) or 0}
+        served = data.get("model") or cfg["model"]
+        choice = (data.get("choices") or [{}])[0]
+        self.usage.calls.append({"check": check, "provider": "groq", "model": served, **ud,
+                                 "cost_usd": round(cost_usd(served, ud, "groq"), 6),
+                                 "stop_reason": choice.get("finish_reason"), "request_id": data.get("id")})
+        if choice.get("finish_reason") == "length":
+            raise AICheckError("回答被截斷（超過 max_tokens）")
+        text = (choice.get("message") or {}).get("content")
+        if not text:
+            raise AICheckError("模型沒有回傳內容")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            raise AICheckError("模型回傳的格式不正確") from e
+
+
+def _groq_post(body: dict):
+    """送到 Groq。錯誤一律轉成中文的 AICheckError；回應內容和金鑰都不放進錯誤訊息。"""
+    import requests
+
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        raise AICheckError("沒有設定 GROQ_API_KEY")
+    url = config.AI_PROVIDERS["groq"]["url"]
+    for attempt in range(config.GROQ_MAX_RETRIES + 1):
+        try:
+            resp = requests.post(url, json=body, timeout=120,
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+        except requests.RequestException as e:
+            raise AICheckError("連不上 Groq API") from e
+        if resp.status_code == 429 and attempt < config.GROQ_MAX_RETRIES:
+            try:
+                wait = float(resp.headers.get("retry-after") or 20)
+            except ValueError:
+                wait = 20.0
+            time.sleep(min(max(wait, 1.0), config.GROQ_MAX_WAIT_SECONDS))
+            continue
+        if resp.status_code == 401:
+            raise AICheckError("Groq API 金鑰無效（GROQ_API_KEY）")
+        if resp.status_code == 429:
+            raise AICheckError("Groq 免費額度用完（每分鐘或每天的上限），請稍後再試")
+        if resp.status_code >= 400:
+            raise AICheckError(f"Groq API 錯誤（HTTP {resp.status_code}）")
+        return resp
+    raise AICheckError("Groq 免費額度用完，請稍後再試")
+
 
 def check_key() -> str:
     """用最便宜的模型打一次極短的請求，確認金鑰可用。不送任何程式碼。
 
     給「明天放好金鑰後先測一下」用：成功回一段中文說明，失敗丟 AICheckError（中文原因）。
     """
-    import os
+    has_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    has_groq = bool(os.environ.get("GROQ_API_KEY"))
+    if not has_anthropic and not has_groq:
+        raise AICheckError("沒有設定 ANTHROPIC_API_KEY 也沒有設定 GROQ_API_KEY（GitHub Actions 的 secret 名稱要一字不差）")
+    lines = []
+    if has_anthropic:
+        lines.append(_check_anthropic())
+    if has_groq:
+        lines.append(_check_groq())
+    return "\n".join(lines)
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise AICheckError("沒有設定 ANTHROPIC_API_KEY（GitHub Actions 的 secret 名稱要一字不差）")
+
+def _check_groq() -> str:
+    model = config.AI_CHECKS["drift"]["model"]
+    resp = _groq_post({"model": model, "max_completion_tokens": 64, "reasoning_effort": "low",
+                       "messages": [{"role": "user", "content": "請只回覆：OK"}]})
+    u = resp.json().get("usage") or {}
+    return f"Groq 金鑰可以用。模型 {model}，這次測試用了 {u.get('total_tokens', 0)} 個 token（免費額度）"
+
+
+def _check_anthropic() -> str:
     import anthropic
 
     model = config.AI_CHECKS["drift"]["model"]
@@ -168,5 +271,5 @@ def check_key() -> str:
     u = resp.usage
     ud = {"input_tokens": u.input_tokens or 0, "output_tokens": u.output_tokens or 0}
     usd = cost_usd(resp.model or model, ud)
-    return (f"AI 金鑰可以用。模型 {resp.model}，這次測試用了 {ud['input_tokens'] + ud['output_tokens']} 個 token，"
+    return (f"Anthropic 金鑰可以用。模型 {resp.model}，這次測試用了 {ud['input_tokens'] + ud['output_tokens']} 個 token，"
             f"約 US${usd:.6f}（NT${usd * config.USD_TO_TWD:.4f}）")
