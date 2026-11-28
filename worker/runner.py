@@ -104,6 +104,44 @@ def _over_quota(user_id: str, scan_id: str) -> bool:
     return n >= config.DAILY_SCANS_PER_USER
 
 
+def _count_scans(since_days: int, scan_id: str, user_id: str | None = None, ai_only: bool = False) -> int:
+    since = (datetime.now(timezone.utc) - timedelta(days=since_days)).isoformat()
+    q = supabase.table("scans").select("id", count="exact").in_("status", ["running", "done"]) \
+        .gte("created_at", since).neq("id", scan_id)
+    if user_id:
+        q = q.eq("user_id", user_id)
+    if ai_only:
+        q = q.eq("use_ai", True)
+    return q.execute().count or 0
+
+
+def _ai_allowlist() -> set[str] | None:
+    """None＝所有人都可以；空集合＝沒有人可以。"""
+    raw = os.environ.get("AI_ALLOWLIST", "").strip()
+    if raw == "*":
+        return None
+    return {x.strip().lower() for x in raw.split(",") if x.strip()}
+
+
+def ai_decision(scan: dict) -> tuple[bool, str | None]:
+    """這次健檢能不能跑 AI。回傳 (可以嗎, 不行的話寫在報告上的原因)。
+    判斷在 worker：網站上勾了 AI 只是「申請」，網站和網址都可以被偽造。"""
+    if not scan.get("use_ai"):
+        return False, None
+    if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("GROQ_API_KEY")):
+        return False, "AI 分析還沒開放，這次只跑規則掃描"
+    allow = _ai_allowlist()
+    if allow is not None:
+        login = (github_login_of(scan["user_id"]) or "").lower()
+        if login not in allow:
+            return False, "AI 分析目前只開放給受邀的測試者，這次只跑規則掃描。想用 AI，可以用自己的金鑰在自己電腦跑開源的健檢引擎"
+    if _count_scans(30, scan["id"], scan["user_id"], ai_only=True) >= config.AI_SCANS_PER_USER_PER_30_DAYS:
+        return False, f"你最近 30 天的 AI 分析次數已用完（{config.AI_SCANS_PER_USER_PER_30_DAYS} 次），這次只跑規則掃描"
+    if _count_scans(30, scan["id"], ai_only=True) >= config.AI_SCANS_GLOBAL_PER_30_DAYS:
+        return False, "本月全站的 AI 分析名額已滿，這次只跑規則掃描"
+    return True, None
+
+
 def process_scan(scan: dict):
     scan_id = scan["id"]
     repo = supabase.table("repos").select("*, installations(*)").eq("id", scan["repo_id"]).single().execute().data
@@ -113,6 +151,12 @@ def process_scan(scan: dict):
         return _fail(scan_id, "這個 repo 不屬於你，或 GitHub App 安裝還沒驗證")
     if _over_quota(scan["user_id"], scan_id):
         return _fail(scan_id, f"今天的健檢次數已用完（每天 {config.DAILY_SCANS_PER_USER} 次），明天再試")
+    if _count_scans(1, scan_id) >= config.GLOBAL_SCANS_PER_DAY:
+        return _fail(scan_id, "今天全站的健檢名額已滿，明天再試")
+    use_ai, ai_off_note = ai_decision(scan)
+    if scan.get("use_ai") and not use_ai:
+        # 沒跑 AI 的就不要算進 AI 名額
+        supabase.table("scans").update({"use_ai": False}).eq("id", scan_id).execute()
 
     last = [0.0]
 
@@ -128,10 +172,8 @@ def process_scan(scan: dict):
     try:
         on_progress({"progress": 2, "stage": "從 GitHub 下載程式（唯讀）", "current_file": None, "found": 0})
         github_app.shallow_clone(inst["github_installation_id"], repo["full_name"], workdir + "/repo")
-        # use_ai 是使用者勾的；伺服器沒開 AI（沒設金鑰）時一律不跑，避免有人直接打 API 硬開
-        use_ai = bool(scan["use_ai"] and (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("GROQ_API_KEY")))
         report = run_scan(workdir + "/repo", use_ai=use_ai, on_progress=on_progress,
-                          project_name=repo["full_name"])
+                          project_name=repo["full_name"], ai_off_note=ai_off_note or "這次沒有勾選 AI 分析")
     except github_app.GitHubError as e:
         return _fail(scan_id, str(e))
     except Exception:

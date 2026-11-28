@@ -52,7 +52,7 @@ def _file_sink(path: str):
 
 
 def scan(path: str, use_ai: bool = True, dry_run: bool = False, progress_file: str | None = None,
-         on_progress=None, project_name: str | None = None) -> dict:
+         on_progress=None, project_name: str | None = None, ai_off_note: str = "--no-ai") -> dict:
     """project_name：報告上顯示的名字。雲端 worker clone 到暫存資料夾，資料夾名不是 repo 名。"""
     started = _now()
     prog = Progress(on_progress or (_file_sink(progress_file) if progress_file else None))
@@ -114,9 +114,9 @@ def scan(path: str, use_ai: bool = True, dry_run: bool = False, progress_file: s
         else:
             coverage["drift"] = {"status": "skipped", "note": missing_key_note("drift")}
     else:
-        coverage["auth"] = {"status": "skipped", "note": "--no-ai"}
-        coverage["duplication"] = {"status": "partial", "note": f"只跑了規則（找到 {len(dup_rule)} 個）；同名函式的 AI 判斷因 --no-ai 略過"}
-        coverage["drift"] = {"status": "skipped", "note": "--no-ai"}
+        coverage["auth"] = {"status": "skipped", "note": ai_off_note}
+        coverage["duplication"] = {"status": "partial", "note": f"只跑了規則（找到 {len(dup_rule)} 個）；同名函式的 AI 判斷略過（{ai_off_note}）"}
+        coverage["drift"] = {"status": "skipped", "note": ai_off_note}
 
     report = build(proj, findings, coverage, ai.usage.to_dict(), started, _now(),
                    payloads=ai.payloads if dry_run else None)
