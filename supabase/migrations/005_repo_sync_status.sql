@@ -2,3 +2,6 @@
 -- worker 每次同步完寫 repos_synced_at；網站比對 sync_requested_at > repos_synced_at 就代表還在等。
 -- 使用者只能讀，不能寫（沿用 001 的欄位權限：authenticated 只有 select）。
 alter table public.installations add column if not exists repos_synced_at timestamptz;
+
+-- 通知 Supabase 的資料庫 API 重新讀取資料表清單（不然新表、新函式要等快取更新才找得到）
+notify pgrst, 'reload schema';

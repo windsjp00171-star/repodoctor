@@ -111,6 +111,7 @@
    再貼 `supabase/migrations/004_repo_sync.sql`，Run（之後到 GitHub 加 repo，「我的專案」才會跟著更新）。
    再貼 `supabase/migrations/005_repo_sync_status.sql`，Run（「我的專案」才知道清單同步好了沒，會顯示進度並自動更新）。
    再貼 `supabase/migrations/006_badges.sql`，Run（健檢徽章：使用者自己選擇公開分數，貼在 README 上）。
+   ※ 跑完某個 migration 後網站說找不到新功能（例如「產生失敗」），在 SQL Editor 跑 `notify pgrst, 'reload schema';` 讓資料庫 API 重新讀取。
 5. **試跑一次**：GitHub → `repodoctor` → **Actions** → 左邊 `worker` → **Run workflow**。
    跑完是綠勾就代表連得上 Supabase 和 GitHub App。
 

@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 修正
+- migration 檔最後加上 `notify pgrst, 'reload schema'`：在 SQL Editor 跑完後，資料庫 API 會馬上認得新表與新函式（曾發生跑完 006 後徽章產生失敗）
 ### 新增
 - 報告上每個問題下方加上「想學會自己修？」連到《Vibe Coding 實戰課》對應單元（免費課程，網址可用 `NEXT_PUBLIC_COURSE_URL` 設定）
 - 健檢徽章：報告頁可以自己選擇產生徽章，貼到 README；徽章只顯示「健檢通過・分數」或「尚未通過」，不公開 repo 名稱與任何問題內容，可隨時停用（資料庫 migration 006）

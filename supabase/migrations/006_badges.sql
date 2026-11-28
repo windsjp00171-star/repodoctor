@@ -37,3 +37,6 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function public.badge_status(uuid) from public;
 grant execute on function public.badge_status(uuid) to anon, authenticated;
+
+-- 通知 Supabase 的資料庫 API 重新讀取資料表清單（不然新表、新函式要等快取更新才找得到）
+notify pgrst, 'reload schema';

@@ -158,3 +158,6 @@ revoke all on function public.handle_new_user() from public, anon, authenticated
 
 -- ── Realtime：網站訂閱掃描進度 ──
 alter publication supabase_realtime add table public.scans;
+
+-- 通知 Supabase 的資料庫 API 重新讀取資料表清單（不然新表、新函式要等快取更新才找得到）
+notify pgrst, 'reload schema';

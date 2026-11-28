@@ -15,3 +15,6 @@ create trigger kick_worker_on_sync_request
   after update of sync_requested_at on public.installations
   for each row when (new.sync_requested_at is distinct from old.sync_requested_at)
   execute function public.kick_worker();
+
+-- 通知 Supabase 的資料庫 API 重新讀取資料表清單（不然新表、新函式要等快取更新才找得到）
+notify pgrst, 'reload schema';

@@ -42,3 +42,6 @@ create trigger kick_worker_on_scan after insert on public.scans
   for each row execute function public.kick_worker();
 create trigger kick_worker_on_installation after insert on public.installations
   for each row execute function public.kick_worker();
+
+-- 通知 Supabase 的資料庫 API 重新讀取資料表清單（不然新表、新函式要等快取更新才找得到）
+notify pgrst, 'reload schema';
