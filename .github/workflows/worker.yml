@@ -8,7 +8,7 @@
 # 之後改用 Render 常駐（docs/SETUP.md「選項 B」）時，把這個檔案刪掉或停用即可，程式不用改。
 #
 # 需要的 repository secrets（Settings → Secrets and variables → Actions）：
-#   SUPABASE_URL、SUPABASE_SECRET_KEY、APP_ID、APP_PRIVATE_KEY、（選用）ANTHROPIC_API_KEY、GROQ_API_KEY
+#   SUPABASE_URL、SUPABASE_SECRET_KEY、APP_ID、APP_PRIVATE_KEY、（選用）ANTHROPIC_API_KEY、GROQ_API_KEY、AI_ALLOWLIST（誰能用 AI，GitHub 帳號逗號分隔；* 為所有人）
 #   ※ GitHub 不准 secret 名稱用 GITHUB_ 開頭，所以 App 的兩個叫 APP_ID／APP_PRIVATE_KEY
 name: worker
 
@@ -61,3 +61,4 @@ jobs:
           GITHUB_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          AI_ALLOWLIST: ${{ secrets.AI_ALLOWLIST }}

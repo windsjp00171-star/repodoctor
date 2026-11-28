@@ -70,4 +70,11 @@ CODE_EXTS = {".py", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".mjs", ".c
 # ── 雲端 worker（runner.py）──
 POLL_SECONDS = 3                    # 沒事做時多久問一次資料庫
 DAILY_SCANS_PER_USER = 10           # 測試期每人每天的健檢次數上限（擋濫用與 AI 成本）
+GLOBAL_SCANS_PER_DAY = 150          # 全站每天的健檢上限（保護 GitHub Actions 分鐘數；有人開很多帳號狂刷也擋得住）
+
+# ── AI 分析誰能用（還沒串金流，AI 的錢是站長出的）──
+# 名單放在環境變數 AI_ALLOWLIST（GitHub 帳號，逗號分隔）。沒設＝沒有人能在網站上用 AI；設成 * ＝所有人。
+# 其他人想用 AI：用自己的金鑰在自己電腦跑開源的健檢引擎（python -m cli），金鑰不經過我們。
+AI_SCANS_PER_USER_PER_30_DAYS = 20  # 受邀的人也有上限，避免一個人把額度用完
+AI_SCANS_GLOBAL_PER_30_DAYS = 100   # 全站 AI 健檢上限：Anthropic 帳戶就算還有錢，也不會一次被用光
 RETENTION_DAYS = 90                 # 健檢細節（findings）保存天數，隱私權政策寫的就是這個數字

@@ -181,6 +181,13 @@
 2. **先設花費上限**（防止意外燒錢）：Console → Settings → **Limits** → 設每月上限，例如 US$10
 3. 放進 GitHub secrets，Name：`ANTHROPIC_API_KEY`
 
+**誰能用 AI（還沒串金流，AI 的錢是你出的）**
+- 新增 secret `AI_ALLOWLIST`，填可以用 AI 的 GitHub 帳號，用逗號分隔，例如 `你的帳號,朋友A`
+- **沒設＝沒有人能在網站上用 AI**（勾了也只跑規則掃描，報告上寫原因）；填 `*` 才是開放給所有人
+- 受邀的人也有上限：每人最近 30 天 20 次、全站 100 次（`worker/config.py`）
+- 全站每天最多 150 次健檢（不分有沒有 AI），保護 GitHub Actions 分鐘數
+- 沒受邀的人想用 AI：用自己的金鑰在自己電腦跑 `python -m cli`（README 有寫），我們不收集別人的金鑰
+
 **測試與開啟**
 1. **測試金鑰**：Actions → `worker` → Run workflow → 勾 **「只測試 AI 金鑰」** → Run。
    「測試 AI 金鑰」那一步會一家一行寫「金鑰可以用」或中文的失敗原因（不送任何程式碼）

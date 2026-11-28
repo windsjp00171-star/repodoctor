@@ -43,6 +43,20 @@ python -m cli <資料夾> --dry-run    # 看會送什麼給 AI（已遮罩）、
 pytest
 ```
 
+### 用自己的金鑰跑 AI 分析
+
+網站上的 AI 分析目前只開放給受邀的測試者。其他人可以在自己電腦用自己的金鑰跑，金鑰和程式碼都不會經過我們：
+
+```bash
+cd worker
+pip install -e .
+export ANTHROPIC_API_KEY=你的金鑰   # 登入與權限
+export GROQ_API_KEY=你的金鑰        # 重複程式、規範落差（Groq 有免費額度）
+python -m cli <資料夾> -o report.json
+```
+
+只放其中一把也可以，沒有金鑰的那一項會在報告上標「略過」。
+
 自己架一套的步驟見 [`docs/SETUP.md`](docs/SETUP.md)；出事時的處理見 [`docs/INCIDENT.md`](docs/INCIDENT.md)。
 
 ## 回報資安問題

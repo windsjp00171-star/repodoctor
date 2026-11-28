@@ -238,3 +238,106 @@ def test_sync_records_time_and_survives_missing_column(monkeypatch):
         {"github_repo_id": 1, "full_name": "me/a", "default_branch": "main", "language": None}])
     runner.sync_repos(ROW)
     assert calls == [("upsert", "repos")]
+
+
+# ── AI 誰能用（還沒串金流，AI 的錢是站長出的）──
+
+class CountQuery(FakeQuery):
+    """記下篩選條件；count 依「是不是只算 AI」「是不是只算這個人」回傳設定好的數字。"""
+    def __init__(self, counts):
+        super().__init__([])
+        self.counts, self.ai, self.user = counts, False, False
+
+    def eq(self, k, v):
+        if k == "use_ai":
+            self.ai = True
+        if k == "user_id":
+            self.user = True
+        return self
+
+    def execute(self):
+        key = ("ai" if self.ai else "all") + ("_user" if self.user else "")
+        return type("R", (), {"data": [], "count": self.counts.get(key, 0)})()
+
+
+def _ai_env(monkeypatch, allow, counts=None):
+    monkeypatch.setenv("GROQ_API_KEY", "test-" + "y" * 10)
+    if allow is None:
+        monkeypatch.delenv("AI_ALLOWLIST", raising=False)
+    else:
+        monkeypatch.setenv("AI_ALLOWLIST", allow)
+    monkeypatch.setattr(runner, "github_login_of", lambda uid: "Me")
+
+    class DB:
+        def table(self, name):
+            return CountQuery(counts or {})
+    monkeypatch.setattr(runner, "supabase", DB())
+
+
+SCAN = {"id": "s1", "user_id": "user-1", "use_ai": True}
+
+
+def test_ai_is_closed_when_no_allowlist(monkeypatch):
+    _ai_env(monkeypatch, None)
+    ok, note = runner.ai_decision(SCAN)
+    assert not ok and "受邀" in note
+
+
+def test_ai_for_invited_login_case_insensitive(monkeypatch):
+    _ai_env(monkeypatch, "someone, me")
+    assert runner.ai_decision(SCAN) == (True, None)
+
+
+def test_uninvited_user_gets_rules_only_with_reason(monkeypatch):
+    _ai_env(monkeypatch, "someone-else")
+    ok, note = runner.ai_decision(SCAN)
+    assert not ok and "自己的金鑰" in note
+
+
+def test_star_opens_ai_to_everyone(monkeypatch):
+    _ai_env(monkeypatch, "*")
+    monkeypatch.setattr(runner, "github_login_of", lambda uid: pytest.fail("開放給所有人時不用查帳號"))
+    assert runner.ai_decision(SCAN)[0] is True
+
+
+def test_per_user_ai_cap(monkeypatch):
+    import config
+    _ai_env(monkeypatch, "me", {"ai_user": config.AI_SCANS_PER_USER_PER_30_DAYS})
+    ok, note = runner.ai_decision(SCAN)
+    assert not ok and "30 天" in note
+
+
+def test_global_ai_cap(monkeypatch):
+    import config
+    _ai_env(monkeypatch, "me", {"ai_user": 0, "ai": config.AI_SCANS_GLOBAL_PER_30_DAYS})
+    ok, note = runner.ai_decision(SCAN)
+    assert not ok and "全站" in note
+
+
+def test_no_ai_requested_means_no_ai_and_no_note(monkeypatch):
+    _ai_env(monkeypatch, "*")
+    assert runner.ai_decision({**SCAN, "use_ai": False}) == (False, None)
+
+
+def test_global_daily_cap_stops_scans(monkeypatch):
+    """有人開很多帳號狂刷：全站每天的上限到了就不跑（保護 GitHub Actions 分鐘數）。"""
+    import config
+    failed = []
+    repo = {"id": "r1", "user_id": "user-1", "full_name": "me/app",
+            "installations": {"user_id": "user-1", "status": "active", "github_installation_id": 42}}
+
+    class Scans(CountQuery):
+        def update(self, payload):
+            if payload.get("status") == "failed":
+                failed.append(payload["error"])
+            return self
+
+    class DB:
+        def table(self, name):
+            if name == "repos":
+                return FakeQuery(repo)
+            return Scans({"all_user": 0, "all": config.GLOBAL_SCANS_PER_DAY})
+    monkeypatch.setattr(runner, "supabase", DB())
+    monkeypatch.setattr(github_app, "shallow_clone", lambda *a: pytest.fail("名額滿了不該下載程式碼"))
+    runner.process_scan({"id": "s1", "user_id": "user-1", "repo_id": "r1", "use_ai": False})
+    assert failed and "全站" in failed[0]
