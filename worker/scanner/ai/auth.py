@@ -136,7 +136,7 @@ def run(proj: Project, ai: AIClient, masker: Masker) -> tuple[list, dict]:
         fs, d = to_findings(data, "auth", "ai.auth", sent_files)
         findings += fs
         for k in d:
-            dropped[k] += d[k]
+            dropped[k] = dropped.get(k, 0) + d[k]
 
     return findings, coverage(ok, errors, len(units), skipped, dropped,
                               f"送出 {len(units) - skipped}/{len(units)} 個路由片段、{len(context)} 段全域保護")
