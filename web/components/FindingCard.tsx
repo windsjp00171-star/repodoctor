@@ -57,6 +57,16 @@ export function FindingCard({ f, advanced, open, context }: { f: Finding; advanc
           </div>
           <pre className="whitespace-pre-wrap break-words p-3 font-sans text-sm leading-relaxed">{f.fix_prompt}</pre>
         </div>
+        {copy.course.units[f.category] && (
+          <p className="text-sm text-muted">
+            {copy.course.lead}
+            <a href={copy.course.base + copy.course.units[f.category].path} target="_blank" rel="noopener"
+              className="text-primary underline-offset-4 hover:underline">
+              {copy.course.name}{copy.course.units[f.category].title} →
+            </a>
+            {copy.course.free}
+          </p>
+        )}
       </div>
     </details>
   );

@@ -10,4 +10,5 @@ psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/002_kick_worker.sql
 psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/003_retention_and_account_deletion.sql
 psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/004_repo_sync.sql
 psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/005_repo_sync_status.sql
+psql -qX -v ON_ERROR_STOP=1 -d $DB -f migrations/006_badges.sql
 psql -qX -v ON_ERROR_STOP=1 -d $DB -tA -f tests/rls_test.sql

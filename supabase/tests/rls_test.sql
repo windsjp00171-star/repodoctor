@@ -195,4 +195,56 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a
 select pg_temp.expect_fail($$update public.installations set repos_synced_at = now() where github_installation_id = 9001$$, 'user sets repos_synced_at');
 reset role;
 
+-- ── 006：健檢徽章 ──
+reset role;
+insert into auth.users (id) values ('00000000-0000-0000-0000-00000000000c'), ('00000000-0000-0000-0000-00000000000d');
+set role service_role;
+insert into public.installations (id, user_id, github_installation_id, status)
+  values ('10000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-00000000000c', 333, 'active'),
+         ('10000000-0000-0000-0000-00000000000d', '00000000-0000-0000-0000-00000000000d', 444, 'active');
+insert into public.repos (id, user_id, installation_id, github_repo_id, full_name)
+  values ('20000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-00000000000c', '10000000-0000-0000-0000-00000000000c', 3, 'c/app'),
+         ('20000000-0000-0000-0000-00000000000d', '00000000-0000-0000-0000-00000000000d', '10000000-0000-0000-0000-00000000000d', 4, 'd/secret');
+insert into public.scans (repo_id, user_id, status, score, summary, finished_at) values
+  ('20000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-00000000000c', 'done', 41, '{"critical": 2}', now() - interval '2 days'),
+  ('20000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-00000000000c', 'done', 92, '{"critical": 0}', now() - interval '1 day'),
+  ('20000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-00000000000c', 'running', null, null, null);
+reset role;
+-- C 可以替自己的 repo 開徽章，不能替別人的
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false);
+insert into public.badges (repo_id) values ('20000000-0000-0000-0000-00000000000c');
+select pg_temp.expect_fail($$insert into public.badges (repo_id) values ('20000000-0000-0000-0000-00000000000d')$$, 'badge on someone else''s repo');
+select pg_temp.expect_fail($$insert into public.badges (repo_id, user_id) values ('20000000-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-00000000000d')$$, 'set badge user_id');
+select pg_temp.expect_fail($$insert into public.badges (id, repo_id) values ('30000000-0000-0000-0000-0000000000ee', '20000000-0000-0000-0000-00000000000c')$$, 'choose badge id');
+-- 之後的測試要用固定的 id（id 由資料庫隨機產生，使用者選不了）
+reset role;
+update public.badges set id = '30000000-0000-0000-0000-00000000000c' where repo_id = '20000000-0000-0000-0000-00000000000c';
+set role authenticated;
+-- D 看不到也刪不掉 C 的徽章
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d', false);
+delete from public.badges;
+do $$ begin
+  if exists (select 1 from public.badges) then raise exception 'D can see C badge'; end if;
+end $$;
+-- 沒登入的人：只能透過 badge_status 拿到分數，讀不到資料表
+set role anon;
+select pg_temp.expect_fail($$select * from public.badges$$, 'anon read badges');
+do $$
+declare r record;
+begin
+  select * into r from public.badge_status('30000000-0000-0000-0000-00000000000c');
+  if r.score <> 92 or r.has_critical then raise exception 'badge should show latest done scan (92, no critical), got % %', r.score, r.has_critical; end if;
+  if exists (select 1 from public.badge_status('30000000-0000-0000-0000-0000000000ff')) then raise exception 'unknown badge returned data'; end if;
+end $$;
+reset role;
+do $$ begin
+  if not exists (select 1 from public.badges where id = '30000000-0000-0000-0000-00000000000c') then raise exception 'D deleted C badge'; end if;
+end $$;
+-- 刪帳號（或刪 repo）徽章跟著消失
+delete from auth.users where id = '00000000-0000-0000-0000-00000000000c';
+do $$ begin
+  if exists (select 1 from public.badges where id = '30000000-0000-0000-0000-00000000000c') then raise exception 'badge survived account deletion'; end if;
+end $$;
+
 select 'ALL RLS TESTS PASSED';
