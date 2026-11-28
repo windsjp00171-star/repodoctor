@@ -218,10 +218,69 @@ def process_deletion_requests():
             log.exception("delete account %s failed; will retry next run", row["id"])
 
 
+# ── 4. 免登入秒檢（公開 repo、只跑規則掃描） ──
+
+def _dir_mb(path: str) -> float:
+    total = 0
+    for root, _, files in os.walk(path):
+        for f in files:
+            try:
+                total += os.path.getsize(os.path.join(root, f))
+            except OSError:
+                pass
+    return total / 1_000_000
+
+
+def process_quick_scan(q: dict):
+    qid = q["id"]
+    workdir = tempfile.mkdtemp(prefix="rdq-")
+    try:
+        github_app.public_shallow_clone(q["full_name"], workdir + "/repo", timeout=config.QUICK_CLONE_TIMEOUT)
+        if _dir_mb(workdir + "/repo") > config.QUICK_MAX_REPO_MB:
+            raise github_app.GitHubError(f"這個 repo 超過 {config.QUICK_MAX_REPO_MB} MB，秒檢不支援；請登入後用 GitHub App 健檢")
+        report = run_scan(workdir + "/repo", use_ai=False, project_name=q["full_name"],
+                          ai_off_note="免登入秒檢只跑規則掃描；登入後可以健檢私人 repo、加上 AI 分析")
+    except github_app.GitHubError as e:
+        supabase.table("quick_scans").update({"status": "failed", "error": str(e), "finished_at": _now()}).eq("id", qid).execute()
+        return
+    except Exception:
+        log.exception("quick scan %s crashed", qid)
+        supabase.table("quick_scans").update({"status": "failed", "error": "健檢引擎發生錯誤，我們會查原因",
+                                              "finished_at": _now()}).eq("id", qid).execute()
+        return
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)   # 掃完立刻刪除程式碼
+
+    keep = ("category", "severity", "title", "plain_explanation", "advanced_explanation", "file_path", "line",
+            "masked_snippet", "fix_prompt", "fingerprint", "source", "confidence")
+    supabase.table("quick_scans").update({
+        "status": "done", "score": report["score"], "category_scores": report["category_scores"],
+        "summary": report["summary"], "coverage": report["coverage"],
+        "meta": {"project": report["project"], "files_scanned": report["files_scanned"], "languages": report["languages"]},
+        "findings": [{k: f[k] for k in keep} for f in report["findings"]],
+        "finished_at": _now(),
+    }).eq("id", qid).execute()
+
+
+def purge_quick_scans():
+    supabase.rpc("purge_quick_scans", {"retention_days": config.QUICK_RETENTION_DAYS}).execute()
+
+
+def process_quick_scans() -> bool:
+    did = False
+    while True:
+        claimed = supabase.rpc("claim_next_quick_scan").execute().data
+        if not claimed:
+            return did
+        for q in claimed:
+            process_quick_scan(q)
+        did = True
+
+
 def tick() -> bool:
     """處理一輪。回傳這一輪有沒有做事。"""
     # 這幾件附帶的事失敗（例如 migration 還沒跑、GitHub 抖一下）不可以連累健檢本身
-    for job in (process_deletion_requests, purge_expired, sync_active_installations):
+    for job in (process_deletion_requests, purge_expired, purge_quick_scans, sync_active_installations):
         try:
             job()
         except Exception:
@@ -230,7 +289,12 @@ def tick() -> bool:
     claimed = supabase.rpc("claim_next_scan").execute().data
     for scan in claimed or []:
         process_scan(scan)
-    return bool(claimed)
+    try:  # migration 007 還沒跑時不可以讓一般健檢停擺
+        quick = process_quick_scans()
+    except Exception:
+        log.exception("quick scans failed")
+        quick = False
+    return bool(claimed) or quick
 
 
 def main():

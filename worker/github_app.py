@@ -88,3 +88,17 @@ def shallow_clone(installation_id: int, full_name: str, dest: str):
     if r.returncode != 0:
         # stderr 可能含網址，但不含 token（token 只在 header 裡）
         raise GitHubError(f"clone 失敗：{r.stderr.strip()[-300:]}")
+
+
+def public_shallow_clone(full_name: str, dest: str, timeout: int = 120):
+    """免登入秒檢用：不帶任何權限下載公開 repo。私人 repo 會因為要求登入而失敗——這正是我們要的。"""
+    cmd = ["git", "-c", "credential.helper=", "clone", "--depth", "1", "--quiet", "--no-tags",
+           f"https://github.com/{full_name}.git", dest]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                           env={**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_LFS_SKIP_SMUDGE": "1",
+                                "GIT_ASKPASS": "true"})
+    except subprocess.TimeoutExpired as e:
+        raise GitHubError("這個 repo 太大，下載超過時間；請登入後用 GitHub App 健檢") from e
+    if r.returncode != 0:
+        raise GitHubError("找不到這個公開 repo（網址打錯，或它是私人 repo——私人 repo 請登入後健檢）")

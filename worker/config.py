@@ -78,3 +78,6 @@ GLOBAL_SCANS_PER_DAY = 150          # 全站每天的健檢上限（保護 GitHu
 AI_SCANS_PER_USER_PER_30_DAYS = 20  # 受邀的人也有上限，避免一個人把額度用完
 AI_SCANS_GLOBAL_PER_30_DAYS = 100   # 全站 AI 健檢上限：Anthropic 帳戶就算還有錢，也不會一次被用光
 RETENTION_DAYS = 90                 # 健檢細節（findings）保存天數，隱私權政策寫的就是這個數字
+QUICK_RETENTION_DAYS = 7            # 免登入秒檢的結果保存天數（隱私權政策寫的就是這個數字）
+QUICK_MAX_REPO_MB = 200             # 秒檢只接受這麼大以內的 repo（擋有人丟超大 repo 吃掉健檢主機時間）
+QUICK_CLONE_TIMEOUT = 120           # 秒檢下載最多等幾秒

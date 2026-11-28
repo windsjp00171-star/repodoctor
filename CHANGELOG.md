@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 新增
+- 免登入秒檢：首頁貼上 GitHub 公開 repo 網址就能跑一次規則掃描，不用登入、不用安裝 App。健檢主機下載時不帶任何權限（私人 repo 下載不到）；全站每天 100 次、同一個 repo 一小時內重複送出直接給上次結果；不記錄申請者，結果保存 7 天（資料庫 migration 007）
 ### 修正
 - migration 檔最後加上 `notify pgrst, 'reload schema'`：在 SQL Editor 跑完後，資料庫 API 會馬上認得新表與新函式（曾發生跑完 006 後徽章產生失敗）
 ### 新增

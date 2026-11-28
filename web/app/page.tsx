@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { QuickScanForm } from "@/components/QuickScanForm";
 import { copy } from "@/lib/copy";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,6 +34,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           </div>
           {!user && <p className="text-sm text-muted">{copy.landing.ctaNote}</p>}
         </div>
+        <div className="max-w-2xl"><QuickScanForm /></div>
       </header>
       <section className="flex flex-col gap-4">
         <h2 className="text-2xl font-bold text-balance">{copy.improve.landingTitle}</h2>

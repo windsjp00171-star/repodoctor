@@ -247,4 +247,46 @@ do $$ begin
   if exists (select 1 from public.badges where id = '30000000-0000-0000-0000-00000000000c') then raise exception 'badge survived account deletion'; end if;
 end $$;
 
+-- ── 007：免登入秒檢 ──
+reset role;
+truncate net.calls;
+set role anon;
+select pg_temp.expect_fail($$select * from public.quick_scans$$, 'anon read quick_scans');
+select pg_temp.expect_fail($$insert into public.quick_scans (full_name) values ('a/b')$$, 'anon insert quick_scans directly');
+select pg_temp.expect_fail($$select public.request_quick_scan('not a repo')$$, 'invalid repo name');
+select pg_temp.expect_fail($$select public.request_quick_scan('a/b; drop table x')$$, 'injection-looking repo name');
+select pg_temp.expect_fail($$select public.claim_next_quick_scan()$$, 'anon claims quick scan');
+select pg_temp.expect_fail($$select public.purge_quick_scans(0)$$, 'anon purges quick scans');
+do $$
+declare a uuid; b uuid; c uuid; r record;
+begin
+  a := public.request_quick_scan(' Owner/Repo ');
+  b := public.request_quick_scan('owner/repo');          -- 一小時內同一個 repo（不分大小寫）：同一筆
+  if a <> b then raise exception 'same repo within 1h should reuse id'; end if;
+  c := public.request_quick_scan('owner/other-repo.js');
+  if c = a then raise exception 'different repo got same id'; end if;
+  select * into r from public.quick_scan_status(a);
+  if r.status <> 'queued' or r.full_name <> 'Owner/Repo' then raise exception 'status wrong: % %', r.status, r.full_name; end if;
+end $$;
+reset role;
+do $$ begin
+  if (select count(*) from net.calls) <> 2 then raise exception 'each new quick scan should kick worker once, got %', (select count(*) from net.calls); end if;
+end $$;
+-- 全站每天上限
+insert into public.quick_scans (full_name) select 'bulk/r' || g from generate_series(1, 100) g;
+set role anon;
+select pg_temp.expect_fail($$select public.request_quick_scan('late/comer')$$, 'daily limit');
+reset role;
+-- worker 搶工作、7 天後清掉
+set role service_role;
+do $$ declare n int; begin
+  select count(*) into n from public.claim_next_quick_scan();
+  if n <> 1 then raise exception 'claim should return one row'; end if;
+end $$;
+update public.quick_scans set created_at = now() - interval '8 days' where full_name like 'bulk/%';
+do $$ begin
+  if public.purge_quick_scans(7) <> 100 then raise exception 'purge should remove the 100 old rows'; end if;
+end $$;
+reset role;
+
 select 'ALL RLS TESTS PASSED';
