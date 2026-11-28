@@ -181,3 +181,34 @@ def test_groq_checks_respect_smaller_input_limit():
     assert config.max_input_chars("drift") < config.MAX_INPUT_CHARS_PER_CALL
     with pytest.raises(AICheckError, match="超過上限"):
         AIClient(Masker(), dry_run=True).ask("drift", "sys", "x" * (config.max_input_chars("drift") + 1), {})
+
+
+def test_check_ai_uses_each_providers_own_model_and_tests_both(monkeypatch, capsys):
+    """回歸：曾經拿 Groq 的模型名稱去問 Anthropic（HTTP 404），而且 Anthropic 一失敗 Groq 就沒測到。"""
+    import anthropic
+    import requests
+    from cli import main
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-" + "x" * 10)
+    monkeypatch.setenv("GROQ_API_KEY", "test-" + "y" * 10)
+    asked = {}
+
+    class Fake:
+        def __init__(self, *a, **k):
+            self.messages = self
+
+        def create(self, **k):
+            asked["anthropic"] = k["model"]
+            import httpx2 as httpx
+            req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+            raise anthropic.APIStatusError("x", response=httpx.Response(500, request=req), body=None)
+
+    def post(url, json=None, **k):
+        asked["groq"] = json["model"]
+        return _groq_ok()
+    monkeypatch.setattr(anthropic, "Anthropic", Fake)
+    monkeypatch.setattr(requests, "post", post)
+    assert main(["--check-ai"]) == 1
+    err = capsys.readouterr().err
+    assert asked["anthropic"].startswith("claude-")
+    assert asked["groq"] == "openai/gpt-oss-120b"
+    assert "Groq 金鑰可以用" in err and "Anthropic 金鑰測試失敗" in err

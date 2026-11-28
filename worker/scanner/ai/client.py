@@ -233,16 +233,28 @@ def check_key() -> str:
     has_groq = bool(os.environ.get("GROQ_API_KEY"))
     if not has_anthropic and not has_groq:
         raise AICheckError("沒有設定 ANTHROPIC_API_KEY 也沒有設定 GROQ_API_KEY（GitHub Actions 的 secret 名稱要一字不差）")
-    lines = []
-    if has_anthropic:
-        lines.append(_check_anthropic())
-    if has_groq:
-        lines.append(_check_groq())
+    # 兩家各測各的：一家失敗不可以讓另一家沒測到
+    lines, failed = [], False
+    for name, has, fn in (("Anthropic", has_anthropic, _check_anthropic), ("Groq", has_groq, _check_groq)):
+        if not has:
+            continue
+        try:
+            lines.append(fn())
+        except AICheckError as e:
+            failed = True
+            lines.append(f"{name} 金鑰測試失敗：{e}")
+    if failed:
+        raise AICheckError("\n".join(lines))
     return "\n".join(lines)
 
 
+def _model_of(provider: str) -> str:
+    """測金鑰要用那一家真的會用到的模型（不可以拿別家的模型名稱去問）。"""
+    return next(c["model"] for c in config.AI_CHECKS.values() if c.get("provider", "anthropic") == provider)
+
+
 def _check_groq() -> str:
-    model = config.AI_CHECKS["drift"]["model"]
+    model = _model_of("groq")
     resp = _groq_post({"model": model, "max_completion_tokens": 64, "reasoning_effort": "low",
                        "messages": [{"role": "user", "content": "請只回覆：OK"}]})
     u = resp.json().get("usage") or {}
@@ -252,7 +264,7 @@ def _check_groq() -> str:
 def _check_anthropic() -> str:
     import anthropic
 
-    model = config.AI_CHECKS["drift"]["model"]
+    model = _model_of("anthropic")
     try:
         resp = anthropic.Anthropic(max_retries=1).messages.create(
             model=model, max_tokens=64, output_config={"effort": "low"},
