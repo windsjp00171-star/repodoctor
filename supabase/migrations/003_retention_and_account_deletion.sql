@@ -26,3 +26,6 @@ create trigger kick_worker_on_delete_request
   after update of delete_requested_at on public.profiles
   for each row when (new.delete_requested_at is not null and old.delete_requested_at is null)
   execute function public.kick_worker();
+
+-- 通知 Supabase 的資料庫 API 重新讀取資料表清單（不然新表、新函式要等快取更新才找得到）
+notify pgrst, 'reload schema';
