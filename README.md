@@ -52,3 +52,7 @@ pytest
 ## 授權
 
 [GNU AGPL-3.0](LICENSE)。你可以自由使用、修改；但如果把修改後的版本架成網站提供別人使用，也必須公開你的原始碼。
+
+---
+
+作者 EMMARK 的其他作品與履歷：[作品集](https://windsjp00171-star.github.io/CLAUDE-DESIGN/)
