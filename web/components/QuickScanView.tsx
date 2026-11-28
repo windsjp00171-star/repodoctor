@@ -67,7 +67,8 @@ export function QuickScanView({ id }: { id: string }) {
         <p><span className="font-semibold text-primary">{q.badge}</span>　{q.upsell}</p>
         <Link href="/login" className="rounded-md bg-primary px-4 py-2 font-semibold text-bg transition hover:brightness-110">{q.upsellCta}</Link>
       </div>
-      <ReportView report={quickToReport(row)} previous={null} onRescan={rescan} />
+      <ReportView report={quickToReport(row)} previous={null} onRescan={rescan}
+        receipt={{ mode: "quick", startedAt: null, finishedAt: row.finished_at, calls: [] }} />
     </>
   );
 }

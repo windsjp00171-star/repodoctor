@@ -3,18 +3,21 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { allCriticalPrompt, copy, scoreContext } from "@/lib/copy";
 import type { Previous } from "@/lib/improve";
+import type { Receipt } from "@/lib/receipt";
 import type { Report } from "@/lib/types";
 import { BadgePanel } from "./BadgePanel";
 import { CopyButton } from "./CopyButton";
 import { FindingCard } from "./FindingCard";
 import { ImprovePanel } from "./ImprovePanel";
+import { ReceiptPanel } from "./ReceiptPanel";
 import { ScoreRing } from "./ScoreRing";
 
 const AI_CATS = new Set(["auth", "drift"]);
 
-export function ReportView({ report, previous, onRescan, expired = false, repoId }: {
+export function ReportView({ report, previous, onRescan, expired = false, repoId, receipt }: {
   report: Report; previous: Previous | null; onRescan: () => Promise<void>; expired?: boolean;
   repoId?: string;  // 有給才顯示「健檢徽章」（範例報告不給）
+  receipt?: Receipt;  // 這次健檢的資料處理紀錄
 }) {
   const [advanced, setAdvanced] = useState(false);
   const [rescanning, setRescanning] = useState(false);
@@ -115,6 +118,8 @@ export function ReportView({ report, previous, onRescan, expired = false, repoId
       </div>
 
       {repoId && <BadgePanel repoId={repoId} passed={report.summary.critical === 0} />}
+
+      {receipt && <ReceiptPanel receipt={receipt} />}
 
       <footer className="flex flex-col gap-1 border-t border-border pt-4 text-xs text-muted">
         <p>

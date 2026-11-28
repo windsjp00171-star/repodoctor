@@ -33,6 +33,15 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             </Link>
           </div>
           {!user && <p className="text-sm text-muted">{copy.landing.ctaNote}</p>}
+          <ul className="flex flex-wrap gap-2 pt-1" aria-label={copy.landing.securityLink}>
+            {copy.landing.trust.map((t) => (
+              <li key={t}>
+                <Link href="/security" className="inline-flex items-center gap-1 rounded-full border border-healthy/50 px-3 py-1 text-xs text-healthy hover:bg-healthy/10">
+                  <span aria-hidden>✓</span>{t}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="max-w-2xl"><QuickScanForm /></div>
       </header>

@@ -31,9 +31,13 @@ export interface ScanRow {
   summary: Record<Severity, number> | null;
   coverage: Record<string, { status: string; note: string }> | null;
   meta: { project: string; files_scanned: number; languages: string[] } | null;
-  token_usage: { total: { input_tokens: number; output_tokens: number; cost_usd: number; cost_twd: number } } | null;
+  token_usage: {
+    total: { input_tokens: number; output_tokens: number; cost_usd: number; cost_twd: number };
+    calls?: { provider?: string; model?: string; input_tokens?: number; output_tokens?: number }[];
+  } | null;
   error: string | null;
   created_at: string;
+  started_at?: string | null;
   finished_at: string | null;
 }
 

@@ -2,6 +2,7 @@
 // ★ 全部是虛構的：專案名、檔名、金鑰前 4 碼都不對應任何真的 repo（CLAUDE.md：示範一律用假資料）。
 // 內容照健檢引擎真的會產生的樣子寫（標題、白話說明、修復指令的格式），訪客看到的就是登入後會拿到的東西。
 import type { Previous } from "./improve";
+import type { Receipt } from "./receipt";
 import type { Finding, Report } from "./types";
 
 const f = (x: Omit<Finding, "id">, i: number): Finding => ({ id: `demo-${i}`, ...x });
@@ -84,5 +85,15 @@ export const demoPrevious: Previous = {
   findings: [
     { fingerprint: "demo-secret-service-role", title: "前端檔案 lib/supabase.ts 用到 service role key", severity: "critical" },
     ...findings.map(({ fingerprint, title, severity }) => ({ fingerprint, title, severity })),
+  ],
+};
+
+export const demoReceipt: Receipt = {
+  mode: "demo",
+  startedAt: "2026-11-24T09:30:05Z",
+  finishedAt: "2026-11-24T09:31:48Z",
+  calls: [
+    { provider: "anthropic", input_tokens: 15_200, output_tokens: 1_900 },
+    { provider: "groq", input_tokens: 3_220, output_tokens: 410 },
   ],
 };
