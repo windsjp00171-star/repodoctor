@@ -341,3 +341,71 @@ def test_global_daily_cap_stops_scans(monkeypatch):
     monkeypatch.setattr(github_app, "shallow_clone", lambda *a: pytest.fail("名額滿了不該下載程式碼"))
     runner.process_scan({"id": "s1", "user_id": "user-1", "repo_id": "r1", "use_ai": False})
     assert failed and "全站" in failed[0]
+
+
+# ── 免登入秒檢 ──
+
+class QuickDB:
+    def __init__(self):
+        self.updates = []
+
+    def table(self, name):
+        db = self
+
+        class T(FakeQuery):
+            def update(self, payload):
+                db.updates.append((name, payload))
+                return self
+        return T([])
+
+
+def test_quick_scan_writes_rule_only_report(monkeypatch, leaky_flask):
+    import shutil as sh
+    db = QuickDB()
+    monkeypatch.setattr(runner, "supabase", db)
+    monkeypatch.setattr(github_app, "public_shallow_clone",
+                        lambda name, dest, timeout=0: sh.copytree(leaky_flask, dest))
+    runner.process_quick_scan({"id": "q1", "full_name": "someone/app"})
+    table, payload = db.updates[-1]
+    assert table == "quick_scans" and payload["status"] == "done"
+    assert payload["findings"] and all("fix_prompt" in f for f in payload["findings"])
+    assert payload["coverage"]["auth"]["status"] == "skipped"          # 秒檢不跑 AI
+    assert "秒檢" in payload["coverage"]["auth"]["note"]
+    assert payload["meta"]["project"] == "someone/app"
+
+
+def test_quick_scan_private_or_missing_repo_fails_with_reason(monkeypatch):
+    db = QuickDB()
+    monkeypatch.setattr(runner, "supabase", db)
+
+    def boom(name, dest, timeout=0):
+        raise github_app.GitHubError("找不到這個公開 repo")
+    monkeypatch.setattr(github_app, "public_shallow_clone", boom)
+    runner.process_quick_scan({"id": "q1", "full_name": "someone/private"})
+    assert db.updates[-1][1]["status"] == "failed" and "公開" in db.updates[-1][1]["error"]
+
+
+def test_quick_scan_rejects_huge_repo(monkeypatch, tmp_path):
+    import config
+    db = QuickDB()
+    monkeypatch.setattr(runner, "supabase", db)
+    monkeypatch.setattr(config, "QUICK_MAX_REPO_MB", 0)
+    monkeypatch.setattr(github_app, "public_shallow_clone",
+                        lambda name, dest, timeout=0: (__import__("os").makedirs(dest), open(dest + "/a.py", "w").write("x" * 10)))
+    monkeypatch.setattr(runner, "run_scan", lambda *a, **k: pytest.fail("太大的 repo 不該健檢"))
+    runner.process_quick_scan({"id": "q1", "full_name": "someone/huge"})
+    assert db.updates[-1][1]["status"] == "failed" and "MB" in db.updates[-1][1]["error"]
+
+
+def test_public_clone_never_sends_credentials(monkeypatch, tmp_path):
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen["cmd"], seen["env"] = cmd, kw.get("env", {})
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+    monkeypatch.setattr(github_app.subprocess, "run", fake_run)
+    monkeypatch.setattr(github_app, "installation_token", lambda i: pytest.fail("秒檢不可以拿 App 的權限"))
+    github_app.public_shallow_clone("someone/app", str(tmp_path / "r"))
+    joined = " ".join(seen["cmd"])
+    assert "Authorization" not in joined and "credential.helper=" in joined
+    assert seen["env"]["GIT_TERMINAL_PROMPT"] == "0"

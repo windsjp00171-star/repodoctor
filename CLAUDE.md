@@ -24,6 +24,7 @@ Claude Code 的修復指令。**只讀不寫**——不改使用者的程式、�
 - 使用者的 GitHub 帳號一律從 `auth.identities` 讀，不讀 `user_metadata`（使用者自己改得到）。
 - GitHub token 只放在 git 的 http header，不放進 clone 網址（不會寫進 `.git/config` 或錯誤訊息）。
 - 欄位層級權限寫在 migration 裡；`supabase/tests/run.sh` 用一般 Postgres 驗 RLS，改 migration 要跑。
+- 沒登入的人只能透過 security definer 函式碰資料：`badge_status`（只回分數）、`request_quick_scan`／`quick_scan_status`（免登入秒檢）。新增這類函式要寫 RLS 測試證明它不會多給。
 
 ```bash
 cd web && npm install && npm run build     # 環境變數見 web/.env.example
