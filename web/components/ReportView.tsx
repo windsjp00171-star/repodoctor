@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { allCriticalPrompt, copy, scoreContext } from "@/lib/copy";
 import type { Previous } from "@/lib/improve";
 import type { Report } from "@/lib/types";
+import { BadgePanel } from "./BadgePanel";
 import { CopyButton } from "./CopyButton";
 import { FindingCard } from "./FindingCard";
 import { ImprovePanel } from "./ImprovePanel";
@@ -11,8 +12,9 @@ import { ScoreRing } from "./ScoreRing";
 
 const AI_CATS = new Set(["auth", "drift"]);
 
-export function ReportView({ report, previous, onRescan, expired = false }: {
+export function ReportView({ report, previous, onRescan, expired = false, repoId }: {
   report: Report; previous: Previous | null; onRescan: () => Promise<void>; expired?: boolean;
+  repoId?: string;  // 有給才顯示「健檢徽章」（範例報告不給）
 }) {
   const [advanced, setAdvanced] = useState(false);
   const [rescanning, setRescanning] = useState(false);
@@ -111,6 +113,8 @@ export function ReportView({ report, previous, onRescan, expired = false }: {
           <FindingCard key={f.fingerprint + i} f={f} advanced={advanced} open={i === 0} context={context} />
         ))}
       </div>
+
+      {repoId && <BadgePanel repoId={repoId} passed={report.summary.critical === 0} />}
 
       <footer className="flex flex-col gap-1 border-t border-border pt-4 text-xs text-muted">
         <p>

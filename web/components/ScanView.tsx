@@ -67,7 +67,7 @@ export function ScanView({ initial, repoName, initialFindings }: { initial: Scan
   const expired = scan.status === "done" && !!scan.found && !findings.length && !!scan.finished_at
     && Date.now() - new Date(scan.finished_at).getTime() > RETENTION_DAYS * 86_400_000;
   if (scan.status === "done" && (findings.length || !scan.found || expired))
-    return <ReportView report={toReport(scan, findings)} previous={previous} onRescan={rescan} expired={expired} />;
+    return <ReportView report={toReport(scan, findings)} previous={previous} onRescan={rescan} expired={expired} repoId={scan.repo_id} />;
   if (scan.status === "failed")
     return (
       <section className="flex flex-col gap-3">
